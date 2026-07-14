@@ -1,0 +1,13 @@
+# Runtime / file sementara dashboard
+# gps.json dibuat otomatis oleh serial_listener.py / simulate.py saat dijalankan.
+dashboard/gps.json
+dashboard/gps.json.tmp
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

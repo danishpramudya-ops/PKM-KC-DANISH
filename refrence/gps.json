@@ -1,0 +1,14 @@
+[
+  {
+    "device_id": "SAR-1111",
+    "latitude": -7.952201833,
+    "longitude": 112.6133823,
+    "altitude": 512.8,
+    "speed": 0.025722222,
+    "satellites": 12,
+    "gps_valid": true,
+    "role": "SAR",
+    "seq": 403,
+    "is_sos": false
+  }
+]

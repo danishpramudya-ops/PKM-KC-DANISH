@@ -1,0 +1,206 @@
+========================================================================
+ANCHORPULSE / POINT RESCUE
+SARAN TINDAK LANJUT ALGORITMA (fokus: Controlled Flooding & LoRa Mesh)
+========================================================================
+
+Dokumen ini berisi kandidat pengembangan untuk memperkuat sisi ALGORITMA
+lomba: controlled flooding dan jaringan mesh LoRa. Tiap butir diberi:
+  - Deskripsi     : apa itu
+  - Manfaat       : kenapa berguna (terutama untuk nilai lomba)
+  - Kompleksitas  : Rendah / Sedang / Tinggi
+  - Ubah paket?   : apakah menyentuh format paket (butuh hati-hati, lihat
+                    docs/protokol-paket.md — jangan ubah tanpa rencana)
+
+Tanda [★] = rekomendasi prioritas tinggi untuk pembuktian di lomba.
+
+
+------------------------------------------------------------------------
+A. PENINGKATAN INTI CONTROLLED FLOODING
+------------------------------------------------------------------------
+
+A1. [★] Probabilistic / Gossip Flooding
+    Deskripsi : Node tidak selalu me-relay, tapi dengan probabilitas p
+                (mis. 0.6). Bisa adaptif: makin banyak tetangga terdengar,
+                makin kecil p.
+    Manfaat   : Mengurangi "broadcast storm" — masalah klasik flooding.
+                Menunjukkan pemahaman teori (rebroadcast redundancy).
+    Kompleksitas: Rendah–Sedang
+    Ubah paket? : Tidak.
+
+A2. [★] Counter-Based / Overhearing Suppression (implicit cancel)
+    Deskripsi : Saat paket menunggu di antrian TX (delay adaptif), node
+                tetap mendengarkan. Jika mendengar paket dengan ID sama
+                sudah di-relay tetangga >= k kali, BATALKAN relay sendiri.
+    Manfaat   : Penurunan jumlah transmisi paling efektif tanpa merusak
+                jangkauan. Sangat "menjual" untuk lomba mesh.
+    Kompleksitas: Sedang.
+    Ubah paket? : Tidak (cukup pakai id+seq yang sudah ada).
+
+A3. Distance/RSSI-Based Relay (far-node-relays)
+    Deskripsi : Hanya relay jika RSSI paket masuk RENDAH (pengirim jauh),
+                sehingga node terjauh yang memperluas jangkauan; node dekat
+                diam. Threshold RSSI bisa diatur.
+    Manfaat   : Memperluas cakupan per-hop, mengurangi duplikasi lokal.
+    Kompleksitas: Sedang.
+    Ubah paket? : Tidak (RSSI dibaca lokal dari LoRa.packetRssi()).
+
+A4. Adaptive Hop-Limit / TTL
+    Deskripsi : Hop-limit tidak statis; disesuaikan estimasi diameter
+                jaringan (mis. dari hop maksimum yang pernah teramati).
+    Manfaat   : Hemat airtime saat jaringan kecil, tetap sampai saat besar.
+    Kompleksitas: Sedang.
+    Ubah paket? : Tidak wajib (bisa lokal), opsional bawa "diameter" hint.
+
+A5. Priority-Aware Flooding Lanjutan
+    Deskripsi : Sudah ada antrian prioritas (SOS>TRACKING>HEARTBEAT).
+                Tambahan: SOS boleh "menyela" backoff (preempt) & memakai
+                p=1.0 (selalu relay) sementara heartbeat pakai p kecil.
+    Manfaat   : Menjamin pesan darurat tetap andal walau trafik padat.
+    Kompleksitas: Rendah.
+    Ubah paket? : Tidak.
+
+
+------------------------------------------------------------------------
+B. KEANDALAN & FAULT TOLERANCE
+------------------------------------------------------------------------
+
+B1. [★] Watchdog Auto-Reset (objektif CLAUDE.md yang belum ada)
+    Deskripsi : Jika tidak menerima paket dari node lain selama N menit,
+                node reset otomatis (ESP.restart) untuk pulih dari state
+                buntu / radio hang.
+    Manfaat   : Sesuai objektif proyek ("fault tolerant"); mudah didemokan.
+    Kompleksitas: Rendah.
+    Ubah paket? : Tidak.
+
+B2. Boot-Epoch / Reboot Counter untuk Duplicate Detection
+    Deskripsi : seqCounter mulai dari 0 lagi setiap reboot -> paket lama
+                bisa salah dianggap duplikat. Tambah "epoch" (boot count,
+                simpan di NVS/Preferences) sehingga id unik = id+epoch+seq.
+    Manfaat   : Mencegah bug halus setelah node restart (relevan dgn B1).
+    Kompleksitas: Sedang.
+    Ubah paket? : YA (tambah field "ep"). Rencanakan kompatibilitas.
+
+B3. Store-and-Forward untuk SOS (Delay-Tolerant Networking)
+    Deskripsi : Jika saat SOS ditekan tidak ada tetangga terdengar, simpan
+                SOS dan kirim ulang begitu ada node baru terdeteksi.
+    Manfaat   : Andal di jaringan renggang/terputus — skenario bencana nyata.
+    Kompleksitas: Sedang–Tinggi.
+    Ubah paket? : Tidak (pakai buffer lokal), tapi perlu manajemen memori.
+
+B4. Hop-by-Hop / End-to-End ACK untuk SOS
+    Deskripsi : Pesan kritis diminta konfirmasi; jika tak ada ACK dalam
+                jendela waktu, retransmit terbatas.
+    Manfaat   : Reliabilitas terukur untuk pesan darurat.
+    Kompleksitas: Tinggi.
+    Ubah paket? : YA (tambah tipe ACK / field). Perlu desain matang.
+
+
+------------------------------------------------------------------------
+C. EFISIENSI DAYA & KANAL
+------------------------------------------------------------------------
+
+C1. Listen-Before-Talk pakai LoRa CAD (Channel Activity Detection)
+    Deskripsi : Sebelum TX, cek apakah kanal sibuk (CAD). Jika sibuk,
+                tunda. Semacam CSMA untuk LoRa.
+    Manfaat   : Mengurangi tabrakan paket -> throughput & keandalan naik.
+    Kompleksitas: Sedang.
+    Ubah paket? : Tidak.
+
+C2. Battery-Aware Forwarding
+    Deskripsi : Node berbaterai rendah me-relay lebih jarang (p lebih kecil)
+                agar hemat; sertakan level baterai di paket agar terlihat
+                di dashboard.
+    Manfaat   : Umur jaringan lebih panjang; selaras prioritas Low-Power.
+    Kompleksitas: Sedang.
+    Ubah paket? : YA (tambah field "bat"). Bisa opsional/mundur-kompatibel.
+
+C3. Duty-Cycle / Sleep Terjadwal untuk KORBAN
+    Deskripsi : Node korban tidur (light-sleep) di antara broadcast, bangun
+                periodik. KORBAN tidak me-relay, jadi aman untuk tidur.
+    Manfaat   : Penghematan daya besar pada perangkat yang dibawa korban.
+    Kompleksitas: Sedang–Tinggi (sinkronisasi jadwal bangun).
+    Ubah paket? : Tidak.
+
+C4. Deduplication Hemat Memori (rolling hash / mini-Bloom filter)
+    Deskripsi : Cache "seen" saat ini array 30 entri String. Untuk skala
+                lebih besar, pakai hash ringkas / Bloom filter.
+    Manfaat   : Hemat RAM, mendukung lebih banyak node.
+    Kompleksitas: Sedang.
+    Ubah paket? : Tidak.
+
+
+------------------------------------------------------------------------
+D. PENGUKURAN & EVALUASI  (kunci untuk MEMBUKTIKAN algoritma di lomba)
+------------------------------------------------------------------------
+
+D1. [★] Metrik Jaringan Otomatis
+    Deskripsi : Kumpulkan & tampilkan: Packet Delivery Ratio (PDR), jumlah
+                relay/duplikat, distribusi hop-count, airtime per node,
+                dan latensi end-to-end (butuh timestamp).
+    Manfaat   : Data kuantitatif untuk laporan/poster PKM — pembuktian
+                bahwa controlled flooding-mu efisien. Sangat bernilai juri.
+    Kompleksitas: Sedang.
+    Ubah paket? : Sebagian (timestamp/latensi butuh field waktu).
+
+D2. Timestamp & Sinkronisasi Waktu Ringan
+    Deskripsi : Gateway sebar waktu acuan; node hitung offset agar latensi
+                & urutan kejadian bisa diukur.
+    Manfaat   : Memungkinkan metrik latensi (D1) dan log yang tertata.
+    Kompleksitas: Sedang.
+    Ubah paket? : YA (tambah field "ts").
+
+D3. Mode Uji / Benchmark Terkendali
+    Deskripsi : Perintah serial untuk membangkitkan beban paket terkontrol
+                (mis. X paket/detik) dan mencatat hasil — untuk eksperimen
+                berulang yang bisa direproduksi.
+    Manfaat   : Metodologi eksperimen rapi -> nilai ilmiah lomba naik.
+    Kompleksitas: Rendah–Sedang.
+    Ubah paket? : Tidak.
+
+
+------------------------------------------------------------------------
+E. VISUALISASI MESH DI DASHBOARD (mendukung sisi algoritma secara visual)
+------------------------------------------------------------------------
+
+E1. [★] Graf Topologi Mesh (siapa mendengar siapa)
+    Deskripsi : Gambar garis antar node berdasarkan tetangga langsung +
+                kualitas link (RSSI). Perlu node melaporkan daftar tetangga.
+    Manfaat   : Demo mesh paling kuat secara visual; menunjukkan jalur
+                relay & konektivitas real-time.
+    Kompleksitas: Sedang–Tinggi.
+    Ubah paket? : YA (paket "neighbor report") atau kirim via gateway.
+
+E2. Animasi Perambatan Paket (flood propagation)
+    Deskripsi : Saat SOS muncul, animasikan gelombang relay antar node di
+                peta memakai hop-count.
+    Manfaat   : Menjelaskan cara kerja controlled flooding ke juri awam.
+    Kompleksitas: Sedang.
+    Ubah paket? : Tidak (pakai hop yang sudah ada).
+
+E3. Panel Statistik Live (dari D1)
+    Deskripsi : Kartu metrik PDR, total relay dihemat (oleh A1/A2), rata2
+                hop, airtime — update real-time di dashboard.
+    Manfaat   : Menonjolkan hasil optimasi algoritma secara langsung.
+    Kompleksitas: Sedang.
+    Ubah paket? : Bergantung D1/D2.
+
+
+------------------------------------------------------------------------
+URUTAN PENGERJAAN YANG DISARANKAN (dampak tinggi, risiko rendah dulu)
+------------------------------------------------------------------------
+1. B1  Watchdog auto-reset            (cepat, penuhi objektif proyek)
+2. A2  Overhearing suppression        (dampak besar, tak ubah paket)
+3. A1  Probabilistic flooding         (mudah, teori kuat)
+4. D1+D3 Metrik + mode uji            (bukti kuantitatif untuk lomba)
+5. E1/E2 Visualisasi topologi/flood   (nilai presentasi tinggi)
+6. A3  RSSI-based relay               (optimasi jangkauan)
+7. Baru sentuh yang UBAH PAKET (B2/C2/D2/B4) dengan rencana kompatibilitas.
+
+CATATAN PENTING:
+- Butir ber-"Ubah paket? YA" menyentuh format paket. Sesuai CLAUDE.md &
+  docs/protokol-paket.md: jangan ubah tanpa rencana kompatibilitas mundur
+  dan pengujian seluruh unit bersamaan. Naikkan versi bila perlu.
+- Jangan redesign algoritma inti tanpa niat eksplisit; tambahkan sebagai
+  lapisan/opsi yang bisa dinyalakan-matikan agar mudah dibandingkan
+  (A/B testing) — ini juga bagus untuk data lomba.
+========================================================================
