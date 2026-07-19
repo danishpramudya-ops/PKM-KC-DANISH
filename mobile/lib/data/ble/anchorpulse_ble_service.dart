@@ -64,12 +64,28 @@ class AnchorpulseBleService {
         .any((g) => g.str128.toLowerCase() == BleConstants.serviceUuid);
   }
 
+  /// Status scan dari flutter_blue_plus — SATU-SATUNYA sumber kebenaran
+  /// "apakah sedang memindai". Timeout, stopScan(), maupun error platform
+  /// semuanya berakhir sebagai emisi `false` di stream ini, jadi state
+  /// aplikasi tidak mungkin melenceng dari keadaan radio sebenarnya.
+  /// Catatan: stream ini me-re-emit nilai terakhir saat di-subscribe, jadi
+  /// pendengar harus mengabaikan `false` sebelum `true` pertama terlihat.
+  Stream<bool> get isScanningStream => FlutterBluePlus.isScanning;
+
+  /// Hasil scan mentah (penyaringan node POINTRESCUE dilakukan repository
+  /// lewat [isAnchorpulse]).
+  Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
+
   /// Mulai scan TANPA filter platform (lebih andal untuk ESP32) — penyaringan
   /// node ANCHORPULSE dilakukan di Dart lewat [isAnchorpulse].
-  Stream<List<ScanResult>> startScan() {
-    FlutterBluePlus.startScan(timeout: BleConstants.scanTimeout);
-    return FlutterBluePlus.scanResults;
-  }
+  ///
+  /// Future selesai begitu scan BERHASIL DIMULAI. Kalau gagal dimulai
+  /// (mis. adapter mati), Future melempar — pemanggil WAJIB menangani supaya
+  /// status tidak tertinggal di `scanning` (AC2 Fase 0A). Bentuk lama
+  /// (fire-and-forget di dalam fungsi ber-return Stream) menyembunyikan
+  /// kegagalan ini sebagai unhandled async error.
+  Future<void> startScan() =>
+      FlutterBluePlus.startScan(timeout: BleConstants.scanTimeout);
 
   Future<void> stopScan() async {
     if (FlutterBluePlus.isScanningNow) {

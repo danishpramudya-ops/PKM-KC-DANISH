@@ -375,3 +375,34 @@ pembacaan dokumentasi versi terpasang (`flutter_blue_plus: ^1.35.3`).
 **Konteks perangkat keras:** proyek ini berjalan paralel dengan perancangan
 perangkat keras. Tombol fisik, OLED, dan LED indikator belum ada. Jangan
 berasumsi ada masukan selain layar sentuh.
+
+---
+
+## 13. Log penyimpangan dari rencana
+
+Diisi selama implementasi, sesuai DoD ("dokumen ini diperbarui dengan
+penyimpangan apa pun dari rencana").
+
+**0A-C2 — getter shim `errorMessage`.**
+Rencana meminta `String? errorMessage` diganti `ConnectionFailure? failure`.
+Mengganti begitu saja membuat commit C2 tidak bisa build (connect_screen
+masih membaca `errorMessage`). Solusi: `errorMessage` dipertahankan sementara
+sebagai getter turunan `failure?.message`, dihapus di 0A-C7. Efek samping
+yang disengaja: snackbar gagal-connect sudah menampilkan pesan manusia
+sejak C2, bukan menunggu C7.
+
+**0A-C1 — bentuk API `AnchorpulseBleService.startScan()` berubah.**
+Rencana hanya menyebut penambahan `isScanningStream`. Saat implementasi
+ditemukan bahwa `startScan()` lama ber-return `Stream` sambil menjalankan
+`FlutterBluePlus.startScan()` fire-and-forget di dalamnya — kegagalan
+memulai scan (mis. adapter mati) menjadi unhandled async error DAN
+meninggalkan `status == scanning` selamanya, melanggar AC2. Solusi:
+`startScan()` menjadi `Future<void>` (bisa ditangkap try/catch), hasil scan
+dipindah ke getter `scanResults` terpisah. Satu-satunya pemanggil
+(ConnectionRepository) disesuaikan di commit yang sama.
+
+**0A-C2 — pemetaan `FbpErrorCode` lebih presisi dari rencana.**
+Rencana meminta pencocokan tipe `FlutterBluePlusException` lalu string.
+Sumber fbp 1.36.8 terpasang ternyata menyediakan `code` terstruktur;
+dipakai `FbpErrorCode.timeout/adapterIsOff/deviceIsDisconnected.index`
+sebelum jatuh ke pencocokan string. Lebih stabil, semangatnya sama.

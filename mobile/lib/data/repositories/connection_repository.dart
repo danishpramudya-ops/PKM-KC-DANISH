@@ -33,7 +33,13 @@ class ConnectionRepository extends ChangeNotifier {
   int? myNodeId;
 
   StreamSubscription<List<ScanResult>>? _scanSub;
+  StreamSubscription<bool>? _isScanningSub;
   StreamSubscription<BluetoothConnectionState>? _connStateSub;
+
+  /// `FlutterBluePlus.isScanning` me-re-emit nilai terakhir saat di-subscribe
+  /// (bisa `false` sebelum scan benar-benar mulai). Bendera ini memastikan
+  /// hanya transisi true→false yang dianggap "scan berakhir".
+  bool _scanHasStarted = false;
 
   Future<void> startScan() async {
     status = ConnectionStatus.scanning;
@@ -42,12 +48,47 @@ class ConnectionRepository extends ChangeNotifier {
     notifyListeners();
 
     await _scanSub?.cancel();
-    _scanSub = ble.startScan().listen((results) {
+    _scanSub = ble.scanResults.listen((results) {
       // Tampilkan HANYA node ANCHORPULSE (disaring di Dart, bukan di platform,
       // agar tahan keterbatasan advertising ESP32).
       scanResults = results.where(AnchorpulseBleService.isAnchorpulse).toList();
       notifyListeners();
     });
+
+    // Ini yang membuat status TIDAK PERNAH buntu di `scanning`: apa pun
+    // penyebab scan berhenti (timeout 15 dtk, stopScan(), error platform),
+    // FlutterBluePlus.isScanning memancarkan false dan kita kembali ke
+    // keadaan yang bisa dipakai. Sebelumnya tidak ada satu pun jalur kode
+    // yang mengembalikan status dari `scanning` — tombol pindai mati permanen.
+    _scanHasStarted = false;
+    await _isScanningSub?.cancel();
+    _isScanningSub = ble.isScanningStream.listen(_onScanningChanged);
+
+    try {
+      await ble.startScan();
+    } catch (e) {
+      if (status != ConnectionStatus.scanning) return;
+      status = ConnectionStatus.error;
+      failure = ConnectionFailure.fromException(e);
+      notifyListeners();
+    }
+  }
+
+  void _onScanningChanged(bool scanning) {
+    if (scanning) {
+      _scanHasStarted = true;
+      return;
+    }
+    if (!_scanHasStarted) return; // emisi awal sebelum scan mulai — abaikan
+    if (status != ConnectionStatus.scanning) return; // sudah connect/putus dll.
+
+    if (scanResults.isEmpty) {
+      status = ConnectionStatus.error;
+      failure = ConnectionFailure.of(ConnectionFailureKind.nodeNotFound);
+    } else {
+      status = ConnectionStatus.idle; // daftar hasil tetap tampil, bisa dipilih
+    }
+    notifyListeners();
   }
 
   /// Pastikan Bluetooth HP menyala sebelum scan. Kembalikan false bila user
@@ -66,6 +107,8 @@ class ConnectionRepository extends ChangeNotifier {
     await ble.stopScan();
     await _scanSub?.cancel();
     _scanSub = null;
+    await _isScanningSub?.cancel();
+    _isScanningSub = null;
   }
 
   Future<void> connect(BluetoothDevice device) async {
@@ -110,6 +153,7 @@ class ConnectionRepository extends ChangeNotifier {
   @override
   void dispose() {
     _scanSub?.cancel();
+    _isScanningSub?.cancel();
     _connStateSub?.cancel();
     super.dispose();
   }
