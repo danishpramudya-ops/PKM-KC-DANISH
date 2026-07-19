@@ -107,38 +107,63 @@ class AnchorpulseBleService {
       timeout: BleConstants.connectTimeout,
       mtu: BleConstants.requestedMtu,
     );
-    _device = device;
 
-    final services = await device.discoverServices();
-    final service = services.firstWhere(
-      (s) => s.uuid.str128.toLowerCase() == BleConstants.serviceUuid,
-      orElse: () => throw StateError(
-        'Service ANCHORPULSE tidak ditemukan — pastikan ini node SAR dengan firmware ber-BLE.',
-      ),
-    );
+    // Mulai titik ini perangkat tersambung tapi BELUM terverifikasi sebagai
+    // node POINTRESCUE. Kalau discovery/subscribe gagal di tengah jalan,
+    // bersihkan SEMUA state dan putuskan — jangan tinggalkan keadaan
+    // setengah-tersambung (isConnected true tanpa characteristic). _device
+    // hanya diisi setelah seluruh langkah sukses (Fase 0A-C5).
+    try {
+      final services = await device.discoverServices();
+      final service = services.firstWhere(
+        (s) => s.uuid.str128.toLowerCase() == BleConstants.serviceUuid,
+        orElse: () => throw StateError(
+          'Service ANCHORPULSE tidak ditemukan — pastikan ini node SAR dengan firmware ber-BLE.',
+        ),
+      );
 
-    for (final c in service.characteristics) {
-      final uuid = c.uuid.str128.toLowerCase();
-      if (uuid == BleConstants.nodeInfoUuid) _chNodeInfo = c;
-      if (uuid == BleConstants.meshRxUuid) _chMeshRx = c;
-      if (uuid == BleConstants.chatTxUuid) _chChatTx = c;
-      if (uuid == BleConstants.chatRxUuid) _chChatRx = c;
-    }
+      for (final c in service.characteristics) {
+        final uuid = c.uuid.str128.toLowerCase();
+        if (uuid == BleConstants.nodeInfoUuid) _chNodeInfo = c;
+        if (uuid == BleConstants.meshRxUuid) _chMeshRx = c;
+        if (uuid == BleConstants.chatTxUuid) _chChatTx = c;
+        if (uuid == BleConstants.chatRxUuid) _chChatRx = c;
+      }
 
-    if (_chMeshRx != null) {
-      await _chMeshRx!.setNotifyValue(true);
-      _meshRxSub = _chMeshRx!.lastValueStream.listen((value) {
-        if (value.isEmpty) return;
-        _meshPacketController.add(utf8.decode(value, allowMalformed: true));
-      });
-    }
+      if (_chMeshRx != null) {
+        await _chMeshRx!.setNotifyValue(true);
+        _meshRxSub = _chMeshRx!.lastValueStream.listen((value) {
+          if (value.isEmpty) return;
+          _meshPacketController.add(utf8.decode(value, allowMalformed: true));
+        });
+      }
 
-    if (_chChatRx != null) {
-      await _chChatRx!.setNotifyValue(true);
-      _chatRxSub = _chChatRx!.lastValueStream.listen((value) {
-        if (value.isEmpty) return;
-        _chatRawController.add(utf8.decode(value, allowMalformed: true));
-      });
+      if (_chChatRx != null) {
+        await _chChatRx!.setNotifyValue(true);
+        _chatRxSub = _chChatRx!.lastValueStream.listen((value) {
+          if (value.isEmpty) return;
+          _chatRawController.add(utf8.decode(value, allowMalformed: true));
+        });
+      }
+
+      _device = device;
+    } catch (e) {
+      // Pembersihan tidak boleh menutupi error asli — bungkus dan abaikan
+      // kegagalan pembersihan itu sendiri, lalu rethrow error aslinya.
+      try {
+        await _meshRxSub?.cancel();
+        await _chatRxSub?.cancel();
+      } catch (_) {}
+      _meshRxSub = null;
+      _chatRxSub = null;
+      _chNodeInfo = null;
+      _chMeshRx = null;
+      _chChatTx = null;
+      _chChatRx = null;
+      try {
+        await device.disconnect();
+      } catch (_) {}
+      rethrow;
     }
   }
 
