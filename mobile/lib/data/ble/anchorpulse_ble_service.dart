@@ -67,7 +67,7 @@ class AnchorpulseBleService {
   /// Mulai scan TANPA filter platform (lebih andal untuk ESP32) — penyaringan
   /// node ANCHORPULSE dilakukan di Dart lewat [isAnchorpulse].
   Stream<List<ScanResult>> startScan() {
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+    FlutterBluePlus.startScan(timeout: BleConstants.scanTimeout);
     return FlutterBluePlus.scanResults;
   }
 
@@ -88,7 +88,7 @@ class AnchorpulseBleService {
     // (~23 byte) begitu terhubung (Android), supaya paket JSON (tracking
     // ~150 byte) tidak terpotong dalam satu notifikasi.
     await device.connect(
-      timeout: const Duration(seconds: 12),
+      timeout: BleConstants.connectTimeout,
       mtu: BleConstants.requestedMtu,
     );
     _device = device;
