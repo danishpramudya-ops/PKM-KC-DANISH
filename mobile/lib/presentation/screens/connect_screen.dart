@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/ble_constants.dart';
 import '../../core/theme/app_theme.dart';
-import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/connection_repository.dart';
 import '../widgets/premium_card.dart';
 import 'home_shell.dart';
@@ -103,7 +102,6 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
     await connection.connect(device);
     if (!mounted) return;
     if (connection.status == ConnectionStatus.connected) {
-      context.read<ChatRepository>().myNodeId = connection.myNodeId;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeShell()),
       );

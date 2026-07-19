@@ -31,10 +31,21 @@ class _AnchorpulseAppState extends State<AnchorpulseApp> {
     _connectionRepository = ConnectionRepository(_ble);
     _nodeRepository = NodeRepository(_ble);
     _chatRepository = ChatRepository(_ble);
+
+    // Perkabelan myNodeId → ChatRepository di lapisan komposisi, BUKAN di
+    // layar: berlaku untuk sambungan manual DAN sambung-ulang otomatis
+    // (0A-C3). Sebelumnya hanya diisi di alur ketuk ConnectScreen, sehingga
+    // setelah reconnect chat salah menilai pesan "milik sendiri" (0A-C4).
+    _connectionRepository.addListener(_syncMyNodeId);
+  }
+
+  void _syncMyNodeId() {
+    _chatRepository.myNodeId = _connectionRepository.myNodeId;
   }
 
   @override
   void dispose() {
+    _connectionRepository.removeListener(_syncMyNodeId);
     _connectionRepository.dispose();
     _nodeRepository.dispose();
     _chatRepository.dispose();
