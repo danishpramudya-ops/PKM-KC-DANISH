@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/ble_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_format.dart';
+import '../../core/utils/utf8_limit.dart';
 import '../../data/repositories/chat_repository.dart';
 
 /// Chat tim SAR — dikirim lewat BLE ke node SAR, di-broadcast firmware ke
@@ -127,7 +129,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
+                    // maxLength dipertahankan untuk penghitung "N/100" —
+                    // batas SEBENARNYA adalah byte, ditegakkan formatter di
+                    // bawah (firmware membatasi 100 BYTE; 100 karakter emoji
+                    // = 400 byte akan dipotong firmware dan bisa rusak).
+                    // Penghitung karakter yang menyesatkan utk teks multi-
+                    // byte = kompromi sadar Fase 0, dibereskan di Fase 2.
                     maxLength: 100,
+                    inputFormatters: const [
+                      Utf8LengthLimitingFormatter(BleConstants.chatMaxBytes),
+                    ],
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _send(),
                   ),

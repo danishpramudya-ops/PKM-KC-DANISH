@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/constants/ble_constants.dart';
+import '../../core/utils/utf8_limit.dart';
 import '../ble/anchorpulse_ble_service.dart';
 import '../models/chat_message.dart';
 
@@ -49,7 +51,14 @@ class ChatRepository extends ChangeNotifier {
   Future<void> send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    await ble.sendChat(trimmed);
+    // Lapis kedua setelah formatter di TextField: apa pun yang lolos ke
+    // sini tidak boleh melebihi batas byte firmware (0C-C2). trim() ulang
+    // karena pemotongan pada batas byte bisa menyisakan spasi di ujung —
+    // firmware juga men-trim, dan teks harus sama persis agar echo bisa
+    // dicocokkan (0C-C3).
+    final limited = truncateUtf8(trimmed, BleConstants.chatMaxBytes).trim();
+    if (limited.isEmpty) return;
+    await ble.sendChat(limited);
   }
 
   void reset() {
