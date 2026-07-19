@@ -17,9 +17,22 @@ class NodeRepository extends ChangeNotifier {
   final AnchorpulseBleService ble;
   final Map<int, NodeStatus> _nodes = {};
   StreamSubscription<String>? _sub;
+  Timer? _presenceTimer;
 
   NodeRepository(this.ble) {
     _sub = ble.meshPacketStream.listen(_onRawPacket);
+    // Tick presence (0B-B3): isOnline & teks waktu relatif dihitung dari
+    // DateTime.now() saat widget dibangun, tapi TIDAK ADA yang memicu
+    // rebuild saat waktu berlalu — notifyListeners hanya terpanggil saat
+    // paket masuk. Saat seluruh mesh diam (justru momen paling genting),
+    // UI membeku menampilkan "Online" + "baru saja" palsu selamanya.
+    // Tick 5 dtk vs ambang offline 60 dtk = transisi terlihat maksimal
+    // 5 dtk setelah ambang terlampaui. Biaya rebuild daftar <= 20 kartu
+    // tak berarti dibanding radio BLE yang menyala terus.
+    _presenceTimer = Timer.periodic(BleConstants.presenceTick, (_) {
+      if (_nodes.isEmpty) return;
+      notifyListeners();
+    });
   }
 
   List<NodeStatus> get nodes {
@@ -106,6 +119,7 @@ class NodeRepository extends ChangeNotifier {
 
   @override
   void dispose() {
+    _presenceTimer?.cancel();
     _sub?.cancel();
     super.dispose();
   }
