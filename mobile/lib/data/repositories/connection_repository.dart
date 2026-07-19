@@ -34,9 +34,6 @@ class ConnectionRepository extends ChangeNotifier {
   /// Widget menampilkan failure.message — BUKAN e.toString().
   ConnectionFailure? failure;
 
-  /// Shim kompatibilitas untuk layar lama — dihapus di 0A-C7.
-  String? get errorMessage => failure?.message;
-
   List<ScanResult> scanResults = [];
   BluetoothDevice? connectedDevice;
 

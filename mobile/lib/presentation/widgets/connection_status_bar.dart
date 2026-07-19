@@ -12,10 +12,17 @@ class ConnectionStatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connected = connection.status == ConnectionStatus.connected;
+    final reconnecting = connection.status == ConnectionStatus.reconnecting;
     final color = connected ? AppColors.success : AppColors.offline;
+    // Status `reconnecting` diberi teks sendiri agar bar ini berkata jujur:
+    // "sedang berusaha pulih (percobaan ke-N)", bukan sekadar "tidak
+    // terhubung" (0A-C7). Warna & ikon tetap merah/putus — memang belum
+    // tersambung, dan Fase 0 dilarang mengubah visual.
     final label = connected
         ? 'Terhubung ke node SAR-${connection.myNodeId ?? '?'}'
-        : 'Tidak terhubung';
+        : reconnecting
+            ? 'Menyambungkan ulang… (percobaan ${connection.reconnectAttempt})'
+            : 'Tidak terhubung';
 
     return Container(
       width: double.infinity,

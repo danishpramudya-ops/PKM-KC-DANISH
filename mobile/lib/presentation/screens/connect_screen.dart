@@ -108,7 +108,10 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
     } else if (connection.status == ConnectionStatus.error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal terhubung: ${connection.errorMessage ?? '-'}'),
+          // failure.message SELALU bahasa manusia (kamus 0A-C2) — tidak ada
+          // e.toString() yang boleh sampai ke layar.
+          content: Text(
+              connection.failure?.message ?? 'Terjadi gangguan koneksi.'),
           backgroundColor: AppColors.offline,
           behavior: SnackBarBehavior.floating,
         ),
