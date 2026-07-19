@@ -159,10 +159,20 @@ peran: **wordmark menyapa** (splash, connect, about — momen manusia),
 memakai wordmark varian tipografis tegas untuk konteks formal — preseden
 bahwa suara boleh menyesuaikan momen selama tanda (pin) dan warna tetap.
 
-## Keputusan kecil yang menunggu pemilik
+## Keputusan pemilik — SEMUA TERJAWAB (19 Jul 2026)
 
-1. `sar-icon.png` — gambar ulang flat sesuai brand, atau ganti siluet pin?
-2. Wordmark perlu diekspor sebagai berkas transparan resolusi tinggi
-   (aset unggahan ~900px cukup untuk mobile; SVG lebih baik bila ada).
-3. JetBrains Mono dibundel (~250 KB) — konfirmasi (audit ini
-   mengasumsikan ya, mengikuti dashboard).
+1. ✅ **Tema default instalasi pertama: GELAP** (karakter brand).
+   Merevisi keputusan D4 lama (default Terang) — revisi tercatat juga di
+   strategi-ux.md. Konsekuensi yang diterima sadar: pemakaian perdana di
+   bawah matahari dimulai dari tema tergelap; mitigasi = switch tema
+   mudah dijangkau (Fase 3).
+2. ✅ **JetBrains Mono dibundel** — dieksekusi (commit `fase-1 F2b`):
+   2 berat + lisensi, gaya `data` kini identik dengan dashboard.
+3. ✅ **sar-icon.png: digambar ulang flat sesuai brand** — vektor flat
+   dua-nada navy/oranye. Ini TUGAS DESAIN ASET di sisi pemilik/desainer
+   (di luar kemampuan agen menggambar berkas produksi). Sampai tersedia,
+   mobile tidak memakai sar-icon sama sekali; dashboard menyusul Fase 7.
+4. ✅ **Wordmark: pemilik menaruh berkas transparan (SVG bila ada) di**
+   `POINTRESCUE-PKMKC-DASHBOARD-MAIN-draft/assets/` — saat berkas muncul,
+   disalin ke `mobile/assets/brand/` dan placeholder CSS di splash
+   diganti. Status saat pemeriksaan terakhir: belum ada.

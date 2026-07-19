@@ -258,6 +258,13 @@ terlihat lebih "taktis" di screenshot.
 > Konsekuensi: setiap komponen wajib diverifikasi kontrasnya di **empat** kondisi,
 > dan Malam-merah butuh palet tersendiri (bukan filter merah di atas tema gelap,
 > karena filter merusak hierarki dan membuat status SOS tak bisa dibedakan).
+>
+> **⟳ REVISI (19 Jul 2026, pasca Brand Identity Audit): default diubah ke
+> GELAP** oleh pemilik — karakter brand dashboard menang atas argumen
+> keterbacaan siang. Empat tema tetap; yang berubah hanya default instalasi
+> pertama. Konsekuensi yang diterima sadar: pemakaian perdana di bawah
+> matahari dimulai dari tema tergelap; mitigasi = switch tema mudah
+> dijangkau, tidak terkubur di Pengaturan (wajib Fase 3).
 
 ## D5. Seberapa agresif sambung otomatis
 
@@ -468,7 +475,8 @@ bisa dipercaya. Ini fase paling penting di seluruh dokumen.
 
 ## Fase 3 — Tema
 
-20. Terang · Gelap · Malam-merah · Ikuti sistem (default: Terang)
+20. Terang · Gelap · Malam-merah · Ikuti sistem (default: **Gelap** —
+    revisi pasca-audit brand; switch tema wajib mudah dijangkau)
 21. Audit kontras setiap layar di keempat tema
 
 ## Fase 4 — Keandalan lapangan
