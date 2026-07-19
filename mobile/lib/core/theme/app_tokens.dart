@@ -69,46 +69,57 @@ class AppTokens extends ThemeExtension<AppTokens> {
   static AppTokens of(BuildContext context) =>
       Theme.of(context).extension<AppTokens>() ?? light;
 
-  /// Palet TERANG — default. Alat lapangan paling sering dipakai siang
-  /// hari di bawah matahari; kontras tinggi di sini lebih penting daripada
-  /// kesan "taktis gelap" (keputusan D4, strategi-ux.md).
+  /// Palet TERANG — identitas cetak brand (poster putih + navy/merah)
+  /// sekaligus tema keterbacaan siang di bawah matahari. Nilai dipetakan
+  /// dari tema light dashboard "Mission Control Premium"
+  /// (docs/identitas-brand.md §4) dengan koreksi WCAG:
+  ///  - statusOk  #15803D dashboard → #166B3F (15803D = 4,31:1 di overlay, gagal tipis)
+  ///  - status merah/kuning versi gelap (EF4444/FACC15 gagal di putih)
   static const light = AppTokens(
-    surfaceBase: Color(0xFFFFFFFF),
-    surfaceRaised: Color(0xFFF1F4F8),
-    surfaceOverlay: Color(0xFFE4E9F0),
-    contentPrimary: Color(0xFF0B1220),
-    contentSecondary: Color(0xFF3D4A5C),
-    contentMuted: Color(0xFF54637A),
+    surfaceBase: Color(0xFFF4F6F8),
+    surfaceRaised: Color(0xFFFFFFFF),
+    surfaceOverlay: Color(0xFFE9EEF4),
+    contentPrimary: Color(0xFF1E293B),
+    contentSecondary: Color(0xFF475569),
+    contentMuted: Color(0xFF566276),
     statusCritical: Color(0xFFB91C1C),
     statusCriticalSurface: Color(0xFFFDE2E2),
     statusWarning: Color(0xFF8A5800),
-    statusWarningSurface: Color(0xFFF7E9CE),
+    statusWarningSurface: Color(0xFFFCF1CC),
     statusOk: Color(0xFF166B3F),
     statusOkSurface: Color(0xFFDBF0E4),
     statusInactive: Color(0xFF566276),
-    statusInactiveSurface: Color(0xFFE6EAF0),
-    accent: Color(0xFF1A4E8A),
-    onAccent: Color(0xFFFFFFFF),
+    statusInactiveSurface: Color(0xFFE2E8F0),
+    accent: Color(0xFFF36C21),
+    onAccent: Color(0xFF0A1E42),
   );
 
-  /// Palet GELAP — posko malam, dalam tenda/kendaraan.
+  /// Palet GELAP — ruang operasi, identitas dashboard. Permukaan slate
+  /// persis dashboard (#0F172A/#1E293B); koreksi WCAG yang tercatat di
+  /// docs/identitas-brand.md §4:
+  ///  - surfaceOverlay #334155 dashboard → #253243 (#334155 terlalu terang:
+  ///    teks status gagal AA di atasnya; #334155 tetap sah untuk hover)
+  ///  - statusCritical TEKS = #F87171 (EF4444 = 3,5:1 di overlay); EF4444
+  ///    tetap dipakai untuk marker/glow/isian dekoratif
+  ///  - statusInactive #64748B dashboard → #8FA0B4 (64748B = 2,7:1)
+  ///  - onAccent = navy-deep #0A1E42, bukan putih (putih di oranye = 2,98:1)
   static const dark = AppTokens(
-    surfaceBase: Color(0xFF0C1118),
-    surfaceRaised: Color(0xFF161D27),
-    surfaceOverlay: Color(0xFF1F2937),
-    contentPrimary: Color(0xFFE8EDF4),
-    contentSecondary: Color(0xFFADBACB),
-    contentMuted: Color(0xFF8494A7),
+    surfaceBase: Color(0xFF0F172A),
+    surfaceRaised: Color(0xFF1E293B),
+    surfaceOverlay: Color(0xFF253243),
+    contentPrimary: Color(0xFFF8FAFC),
+    contentSecondary: Color(0xFFCBD5E1),
+    contentMuted: Color(0xFF94A3B8),
     statusCritical: Color(0xFFF87171),
     statusCriticalSurface: Color(0xFF3D1516),
     statusWarning: Color(0xFFFBBF24),
     statusWarningSurface: Color(0xFF3A2A05),
-    statusOk: Color(0xFF4ADE80),
+    statusOk: Color(0xFF22C55E),
     statusOkSurface: Color(0xFF0F3320),
-    statusInactive: Color(0xFF8797AA),
+    statusInactive: Color(0xFF8FA0B4),
     statusInactiveSurface: Color(0xFF1F2834),
-    accent: Color(0xFF7FB3E8),
-    onAccent: Color(0xFF06121F),
+    accent: Color(0xFFF36C21),
+    onAccent: Color(0xFF0A1E42),
   );
 
   /// Palet MALAM-MERAH — operasi malam, menjaga adaptasi mata gelap.
