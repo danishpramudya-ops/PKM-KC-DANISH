@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'app_tokens.dart';
+
 /// Palet warna Point Rescue
+///
+/// CATATAN Fase 1: kelas ini dalam proses pensiun. Sumber warna baru
+/// adalah AppTokens (app_tokens.dart) yang kontrasnya dijaga uji WCAG.
+/// Layar bermigrasi per-alur di Fase 2 (keputusan D-F3); AppColors
+/// dihapus setelah layar terakhir yang memakainya dirombak.
 class AppColors {
   AppColors._();
 
@@ -18,7 +25,13 @@ class AppTheme {
 
   static ThemeData light = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Inter', // Or fallback to default sans-serif
+    fontFamily: 'Inter', // sejak Fase 1-F2 benar-benar dimuat (bukan lagi fallback diam-diam)
+    // Registrasi lapisan token (Fase 1-F1b). SENGAJA hanya ini yang
+    // berubah: nilai ThemeData lama dipertahankan agar tampilan layar
+    // yang belum dimigrasi tidak bergeser (D-F3 — migrasi per-alur di
+    // Fase 2). Tema gelap & malam-merah dibangun di Fase 3 bersama
+    // switch-nya.
+    extensions: const [AppTokens.light],
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       primary: AppColors.primary,
