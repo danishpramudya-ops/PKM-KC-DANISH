@@ -47,10 +47,21 @@ class NodeRepository extends ChangeNotifier {
     final existing = _nodes[packet.id];
 
     if (packet.isHeartbeat) {
-      if (existing != null) {
-        existing.touch();
-        notifyListeners();
-      }
+      // Heartbeat BOLEH membuat node baru (0B-B1). Tanpa ini, GATEWAY —
+      // yang tidak pernah menyiarkan lokasi, hanya heartbeat — secara
+      // struktural mustahil muncul di aplikasi; begitu pula node SAR/KORBAN
+      // yang belum dapat fix GPS. Node buatan heartbeat tidak punya posisi,
+      // jadi tampil di daftar ("Belum ada data lokasi") tapi TIDAK di peta —
+      // dua-duanya jujur.
+      //
+      // PENTING: touch() sengaja TIDAK menyentuh seq. Firmware memakai satu
+      // seqCounter untuk semua tipe paket — kalau heartbeat ikut menaikkan
+      // baseline, paket TRACKING yang tiba belakangan lewat jalur multi-hop
+      // lebih lambat bisa tertolak sebagai duplikat.
+      final node = existing ?? NodeStatus(id: packet.id, role: packet.role);
+      node.touch();
+      _nodes[packet.id] = node;
+      notifyListeners();
       return;
     }
 
