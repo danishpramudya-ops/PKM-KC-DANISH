@@ -52,12 +52,14 @@ class AppType {
   );
 
   /// Angka status: jarak, koordinat, RSSI, hitungan mundur.
-  /// TABULAR — setiap digit selebar sama, sehingga angka yang berubah
-  /// cepat tidak bergoyang. Detail kecil yang sangat terasa profesional
-  /// (strategi-ux.md §4.1). Dijaga uji lebar digit di
+  /// JetBrains Mono — mengikuti dashboard (keputusan pasca Brand Identity
+  /// Audit), sehingga bentuk angka identik di kedua permukaan. Monospace
+  /// inheren tabular: digit tidak bergoyang saat berubah cepat.
+  /// tabularFigures dipertahankan sebagai jaring pengaman bila sistem
+  /// jatuh ke font fallback proporsional. Dijaga uji lebar digit di
   /// test/core/theme/type_test.dart.
   static const data = TextStyle(
-    fontFamily: _family,
+    fontFamily: 'JetBrainsMono',
     fontSize: 15,
     fontWeight: FontWeight.w600,
     height: 1.3,

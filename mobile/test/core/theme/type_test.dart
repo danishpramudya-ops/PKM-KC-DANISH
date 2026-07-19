@@ -25,16 +25,25 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    // Muat Inter asli dari aset (jalur relatif ke root proyek mobile/).
-    final loader = FontLoader('Inter');
+    // Muat font asli dari aset (jalur relatif ke root proyek mobile/) —
+    // tanpa ini flutter_test memakai Ahem yang semua glyph-nya selebar
+    // sama, dan uji tabular lolos kosong.
+    final inter = FontLoader('Inter');
     for (final f in [
       'assets/fonts/Inter-Medium.ttf',
       'assets/fonts/Inter-SemiBold.ttf',
     ]) {
       final bytes = File(f).readAsBytesSync();
-      loader.addFont(Future.value(ByteData.view(bytes.buffer)));
+      inter.addFont(Future.value(ByteData.view(bytes.buffer)));
     }
-    await loader.load();
+    await inter.load();
+
+    // Gaya `data` kini JetBrains Mono (keputusan pasca-audit brand).
+    final jbm = FontLoader('JetBrainsMono');
+    final jbmBytes =
+        File('assets/fonts/JetBrainsMono-SemiBold.ttf').readAsBytesSync();
+    jbm.addFont(Future.value(ByteData.view(jbmBytes.buffer)));
+    await jbm.load();
   });
 
   group('AppType.data — tabular figures', () {
@@ -65,17 +74,18 @@ void main() {
       expect(AppType.data.fontSize, 15);
     });
 
-    test('semua tingkat memakai Inter yang kini benar-benar terdaftar', () {
+    test('pembagian keluarga font sesuai keputusan audit brand', () {
+      // UI = Inter; data = JetBrains Mono (identik dengan dashboard).
       for (final s in [
         AppType.display,
         AppType.title,
         AppType.body,
         AppType.label,
         AppType.caption,
-        AppType.data,
       ]) {
         expect(s.fontFamily, 'Inter');
       }
+      expect(AppType.data.fontFamily, 'JetBrainsMono');
     });
   });
 }

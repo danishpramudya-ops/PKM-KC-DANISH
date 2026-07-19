@@ -67,6 +67,10 @@ flutter:
 
   assets:
     - assets/logo.png
+    # Aset brand resmi (docs/identitas-brand.md). stripe.png = strip
+    # "Signal Lost Lives Found", disalin apa adanya dari dashboard —
+    # dipakai splash & layar SOS (Fase 2), aturan pakai di audit §5.
+    - assets/brand/
 
   # Inter (rsms/inter v4.1, lisensi SIL OFL — assets/fonts/LICENSE.txt).
   # Memperbaiki bug Fase 1-F2: fontFamily 'Inter' dideklarasikan sejak awal
@@ -85,6 +89,16 @@ flutter:
           weight: 700
         - asset: assets/fonts/Inter-ExtraBold.ttf
           weight: 800
+
+    # JetBrains Mono (v2.304, SIL OFL — LICENSE-JetBrainsMono.txt) untuk
+    # gaya `data`: koordinat/jarak/RSSI tampil identik dengan dashboard
+    # (keputusan pasca Brand Identity Audit).
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
+          weight: 600
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
