@@ -406,3 +406,19 @@ Rencana meminta pencocokan tipe `FlutterBluePlusException` lalu string.
 Sumber fbp 1.36.8 terpasang ternyata menyediakan `code` terstruktur;
 dipakai `FbpErrorCode.timeout/adapterIsOff/deviceIsDisconnected.index`
 sebelum jatuh ke pencocokan string. Lebih stabil, semangatnya sama.
+
+**0C-C-3 — `ChatRepository.send()` tidak lagi melempar.**
+Rencana tidak menetapkan eksplisit. Keputusan: kegagalan kirim disalurkan
+lewat status pesan (`failed` → "gagal terkirim", persisten di daftar),
+bukan lewat exception. Konsekuensi: blok try/catch + snackbar
+`'Gagal kirim pesan: $e'` di chat_screen menjadi kode mati — yang bagus,
+karena itu satu-satunya jalur `$e` mentah tersisa yang bisa mencapai layar.
+Penghapusannya ditunda ke Fase 2 (menghapus try/catch = perubahan kode
+presentation di luar "isi teks", dan kode mati tidak membahayakan).
+
+**0C-C-2/C-3 — trim ulang setelah pemotongan byte.**
+Ditemukan saat implementasi: pemotongan pada batas byte bisa menyisakan
+spasi di ujung ("abc " ≠ echo "abc" yang sudah di-trim firmware) →
+rekonsiliasi echo gagal → duplikat + pesan macet `sending`. Solusi:
+`truncateUtf8(...).trim()` di `send()` supaya teks lokal identik dengan
+yang akan di-echo firmware.
