@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../ble/anchorpulse_ble_service.dart';
+import '../models/connection_failure.dart';
 
 enum ConnectionStatus { idle, scanning, connecting, connected, disconnected, error }
 
@@ -16,7 +17,14 @@ class ConnectionRepository extends ChangeNotifier {
   ConnectionRepository(this.ble);
 
   ConnectionStatus status = ConnectionStatus.idle;
-  String? errorMessage;
+
+  /// Kegagalan terakhir dalam bahasa manusia (null bila tidak ada).
+  /// Widget menampilkan failure.message — BUKAN e.toString().
+  ConnectionFailure? failure;
+
+  /// Shim kompatibilitas untuk layar lama — dihapus di 0A-C7.
+  String? get errorMessage => failure?.message;
+
   List<ScanResult> scanResults = [];
   BluetoothDevice? connectedDevice;
 
@@ -30,7 +38,7 @@ class ConnectionRepository extends ChangeNotifier {
   Future<void> startScan() async {
     status = ConnectionStatus.scanning;
     scanResults = [];
-    errorMessage = null;
+    failure = null;
     notifyListeners();
 
     await _scanSub?.cancel();
@@ -85,7 +93,7 @@ class ConnectionRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       status = ConnectionStatus.error;
-      errorMessage = e.toString();
+      failure = ConnectionFailure.fromException(e);
       notifyListeners();
     }
   }
