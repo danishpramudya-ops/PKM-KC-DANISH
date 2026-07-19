@@ -66,7 +66,30 @@ class NodeRepository extends ChangeNotifier {
     }
 
     if (existing != null && packet.seq <= existing.seq) {
-      return;
+      // seq mundur = duplikat relay… ATAU node baru saja reboot (seqCounter
+      // firmware mulai dari 0 lagi tiap boot). Tanpa pembeda ini, node yang
+      // restart tertolak SEMUA paketnya sampai seq menyusul nilai lama —
+      // tampil "Offline" berjam-jam padahal hidup dan mengirim posisi
+      // (0B-B2; akar masalah yang sama dicatat di saran-tindaklanjut.txt
+      // butir B2, solusi menyeluruhnya field "epoch" = perubahan protokol,
+      // dilarang di Fase 0 — ini heuristik sisi aplikasi).
+      //
+      // Dua tanda reboot (cukup salah satu):
+      //  - gap besar: duplikat relay sah paling banyak tertinggal ~hop
+      //    limit (5); selisih >= rebootSeqGap hampir pasti reboot.
+      //  - diam lama: node menghilang > rebootSilence lalu muncul dengan
+      //    seq kecil — menangkap reboot saat seq lama masih kecil.
+      // Batas yang diterima: reboot dengan seq kecil + jeda singkat tetap
+      // membuang <= rebootSeqGap paket pertama (~20 dtk pada laju tracking
+      // 5 dtk) — jauh lebih baik daripada berjam-jam.
+      final gap = existing.seq - packet.seq;
+      final silence = DateTime.now().difference(existing.lastSeen);
+      final looksLikeReboot = gap >= BleConstants.rebootSeqGap ||
+          silence > BleConstants.rebootSilence;
+      if (!looksLikeReboot) {
+        return; // duplikat relay asli — inti dedup controlled flooding
+      }
+      // Terima paket; applyPacket di bawah me-reset baseline seq.
     }
 
     final node = existing ?? NodeStatus(id: packet.id, role: packet.role);
