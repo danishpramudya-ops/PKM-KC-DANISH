@@ -5,6 +5,7 @@ import '../../core/constants/ble_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_format.dart';
 import '../../core/utils/utf8_limit.dart';
+import '../../data/models/chat_message.dart';
 import '../../data/repositories/chat_repository.dart';
 
 /// Chat tim SAR — dikirim lewat BLE ke node SAR, di-broadcast firmware ke
@@ -43,6 +44,23 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Baris status di bawah pesan (0C-C4) — isi TEKS saja di Text yang sudah
+  /// ada, nol widget baru. `handedToNode` sengaja tanpa embel-embel:
+  /// keadaan normal tetap sunyi, hanya penyimpangan yang bersuara
+  /// (prinsip "Terbaca dalam tiga detik"). DILARANG kata "Terkirim"/
+  /// centang — protokol tanpa ACK tidak bisa membuktikannya (B8).
+  String _statusLine(ChatMessage m) {
+    if (!m.isMine) return formatClock(m.timestamp);
+    switch (m.status) {
+      case ChatMessageStatus.sending:
+        return '${formatClock(m.timestamp)} · mengirim…';
+      case ChatMessageStatus.handedToNode:
+        return formatClock(m.timestamp);
+      case ChatMessageStatus.failed:
+        return '${formatClock(m.timestamp)} · gagal terkirim';
+    }
   }
 
   @override
@@ -96,7 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 style: TextStyle(color: m.isMine ? Colors.white : AppColors.text)),
                             const SizedBox(height: 4),
                             Text(
-                              formatClock(m.timestamp),
+                              _statusLine(m),
                               style: TextStyle(
                                 fontSize: 10,
                                 color: m.isMine ? Colors.white70 : AppColors.text.withOpacity(0.5),
