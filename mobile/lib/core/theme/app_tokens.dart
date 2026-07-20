@@ -231,6 +231,7 @@ class AppSpace {
 class AppRadius {
   AppRadius._();
   static const double small = 8; // pill, badge, elemen kecil
+  static const double md = 12; // bilah navigasi (sudut atas)
   static const double card = 16; // kartu, sheet, dialog
 }
 

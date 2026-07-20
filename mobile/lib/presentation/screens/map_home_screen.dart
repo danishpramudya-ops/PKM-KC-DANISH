@@ -8,6 +8,7 @@ import '../../core/theme/app_type.dart';
 import '../../data/models/node_status.dart';
 import '../../data/repositories/connection_repository.dart';
 import '../../data/repositories/node_repository.dart';
+import '../widgets/app_header.dart';
 import '../widgets/data_tone.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/node_visuals.dart';
@@ -104,7 +105,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
           ],
         ),
         if (positioned.isEmpty) _emptyOverlay(tokens),
-        _connectionChip(context),
+        _topBar(context, nodeRepo),
         _mapButtons(tokens, positioned),
         NodeSheet(onFocusNode: (n) {
           if (n.hasPosition) _mapController.move(LatLng(n.lat!, n.lng!), 17);
@@ -139,24 +140,74 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
     );
   }
 
-  Widget _connectionChip(BuildContext context) {
+  /// Header brand + banner peringatan — mengikuti susunan Figma:
+  /// TopAppBar 48dp, lalu banner kritis menempel tepat di bawahnya.
+  Widget _topBar(BuildContext context, NodeRepository nodeRepo) {
     final connection = context.watch<ConnectionRepository>();
     final (label, kind) = switch (connection.status) {
       ConnectionStatus.connected => (
-          'Terhubung · SAR-${connection.myNodeId ?? '?'}',
+          'SAR-${connection.myNodeId ?? '?'}',
           StatusKind.ok,
         ),
       ConnectionStatus.reconnecting => (
-          'Menyambungkan ulang… (percobaan ${connection.reconnectAttempt})',
+          'Sambung ulang ${connection.reconnectAttempt}',
           StatusKind.critical,
         ),
-      _ => ('Tidak terhubung', StatusKind.critical),
+      _ => ('Terputus', StatusKind.critical),
     };
 
+    final sosNodes =
+        nodeRepo.nodes.where((n) => n.isSos && n.isOnline).toList();
+
     return Positioned(
-      top: MediaQuery.of(context).padding.top + AppSpace.sm,
-      left: AppSpace.md,
-      child: StatusPill(label: label, kind: kind),
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Column(
+        children: [
+          AppHeader(trailing: StatusPill(label: label, kind: kind)),
+          if (sosNodes.isNotEmpty) _alertBanner(context, sosNodes),
+        ],
+      ),
+    );
+  }
+
+  /// Banner peringatan kritis — hanya muncul saat ADA SOS aktif. Diambil
+  /// dari "Critical Alert Banner" Figma, tapi isinya kejadian nyata, bukan
+  /// teks contoh.
+  Widget _alertBanner(BuildContext context, List<NodeStatus> sosNodes) {
+    final tokens = AppTokens.of(context);
+    final text = sosNodes.length == 1
+        ? 'SOS AKTIF: ${sosNodes.first.deviceId}'
+        : 'SOS AKTIF: ${sosNodes.length} korban';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.lg, vertical: AppSpace.sm),
+      decoration: BoxDecoration(
+        color: tokens.statusCriticalSurface.withValues(alpha: 0.95),
+        border: Border(
+          bottom: BorderSide(color: tokens.statusCritical, width: 1.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              size: 18, color: tokens.statusCritical),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Text(
+              text,
+              style: AppType.data.copyWith(
+                fontSize: 12,
+                color: tokens.statusCritical,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -180,7 +231,7 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
 
     return Positioned(
       right: AppSpace.md,
-      top: MediaQuery.of(context).padding.top + 56,
+      top: MediaQuery.of(context).padding.top + 96,
       child: Column(
         children: [
           btn(Icons.add_rounded, () {
@@ -201,68 +252,106 @@ class _MapHomeScreenState extends State<MapHomeScreen> {
   }
 }
 
-/// Marker peta: satu bentuk induk, peran dibedakan warna token. SOS
-/// berdenyut — satu-satunya animasi berulang yang diizinkan aturan gerak,
-/// karena gerakan di situ menyandikan urgensi (docs/strategi-ux.md §4.4).
+/// Marker peta berbentuk **pin** (32×40, atas membulat penuh, bawah radius
+/// kecil) — bentuk yang sama dipakai semua peran, dibedakan warna token.
+/// Mengikuti anatomi marker di Figma: pin berisi ikon, chip nama di
+/// bawahnya, dan chip status di atasnya bila ada yang perlu diberitahukan.
+///
+/// SOS berdenyut — satu-satunya animasi berulang yang diizinkan aturan
+/// gerak, karena gerakan di situ menyandikan urgensi.
 class _NodeMarker extends StatelessWidget {
   final NodeStatus node;
 
   const _NodeMarker({required this.node});
+
+  static const _pinShape = BorderRadius.only(
+    topLeft: Radius.circular(999),
+    topRight: Radius.circular(999),
+    bottomLeft: Radius.circular(6),
+    bottomRight: Radius.circular(6),
+  );
 
   @override
   Widget build(BuildContext context) {
     final tokens = AppTokens.of(context);
     final (fg, _) = dataToneColors(tokens, nodeTone(node));
     final isSos = node.isSos && node.isOnline;
+    final offline = !node.isOnline;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 34,
-          height: 34,
+          width: 46,
+          height: 42,
           child: Stack(
-            alignment: Alignment.center,
+            alignment: Alignment.topCenter,
             children: [
-              if (isSos) _SosPulse(color: fg),
+              if (isSos)
+                const Positioned(top: 1, child: _SosPulse(size: 38)),
               Container(
-                width: 16,
-                height: 16,
+                width: 32,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: fg,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: tokens.surfaceBase.withValues(alpha: 0.9),
-                    width: 2.5,
+                  color: offline ? tokens.surfaceOverlay : fg,
+                  borderRadius: _pinShape,
+                  border: offline ? Border.all(color: fg, width: 1.5) : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Icon(
+                    nodeIcon(node),
+                    size: 15,
+                    color: offline ? fg : tokens.surfaceBase,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 2),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: tokens.surfaceRaised.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: tokens.contentMuted.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Text(
-            node.deviceId,
-            style: AppType.overline.copyWith(color: tokens.contentPrimary),
-          ),
+        _chip(
+          tokens,
+          node.deviceId,
+          borderColor: isSos || offline
+              ? fg.withValues(alpha: 0.8)
+              : tokens.contentMuted.withValues(alpha: 0.35),
+          textColor: isSos ? fg : tokens.contentPrimary,
         ),
       ],
+    );
+  }
+
+  Widget _chip(
+    AppTokens tokens,
+    String text, {
+    required Color borderColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: tokens.surfaceRaised.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        text,
+        style: AppType.overline.copyWith(color: textColor, letterSpacing: 1.1),
+      ),
     );
   }
 }
 
 class _SosPulse extends StatefulWidget {
-  final Color color;
-  const _SosPulse({required this.color});
+  final double size;
+  const _SosPulse({required this.size});
 
   @override
   State<_SosPulse> createState() => _SosPulseState();
@@ -283,15 +372,17 @@ class _SosPulseState extends State<_SosPulse>
 
   @override
   Widget build(BuildContext context) {
+    final color = AppTokens.of(context).statusCritical;
+
     // Hormati pengaturan aksesibilitas sistem: tanpa gerak, denyut diganti
     // cincin statis — urgensi tetap tersampaikan lewat warna & bentuk.
     if (MediaQuery.disableAnimationsOf(context)) {
       return Container(
-        width: 30,
-        height: 30,
+        width: widget.size,
+        height: widget.size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: widget.color, width: 2),
+          border: Border.all(color: color, width: 2),
         ),
       );
     }
@@ -302,11 +393,11 @@ class _SosPulseState extends State<_SosPulse>
         return Opacity(
           opacity: (1 - t).clamp(0.0, 1.0) * 0.7,
           child: Container(
-            width: 16 + 18 * t,
-            height: 16 + 18 * t,
+            width: widget.size * (0.55 + 0.45 * t),
+            height: widget.size * (0.55 + 0.45 * t),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: widget.color, width: 2),
+              border: Border.all(color: color, width: 2),
             ),
           ),
         );

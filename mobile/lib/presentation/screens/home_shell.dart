@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../../data/repositories/connection_repository.dart';
 import '../../data/repositories/node_repository.dart';
+import '../widgets/tactical_nav_bar.dart';
 import 'chat_screen.dart';
 import 'connect_screen.dart';
 import 'map_home_screen.dart';
@@ -92,23 +93,23 @@ class _HomeShellState extends State<HomeShell> {
           SettingsScreen(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: TacticalNavBar(
         selectedIndex: _tabIndex,
-        onDestinationSelected: (i) => setState(() => _tabIndex = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map_rounded),
+        onSelected: (i) => setState(() => _tabIndex = i),
+        items: const [
+          NavItem(
+            icon: Icons.map_outlined,
+            activeIcon: Icons.map_rounded,
             label: 'Peta',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline_rounded),
-            selectedIcon: Icon(Icons.chat_bubble_rounded),
+          NavItem(
+            icon: Icons.chat_bubble_outline_rounded,
+            activeIcon: Icons.chat_bubble_rounded,
             label: 'Chat',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings_rounded),
+          NavItem(
+            icon: Icons.settings_outlined,
+            activeIcon: Icons.settings_rounded,
             label: 'Pengaturan',
           ),
         ],
