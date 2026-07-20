@@ -467,51 +467,56 @@ bisa dipercaya. Ini fase paling penting di seluruh dokumen.
     peringatan apa pun demi mematuhi aturan "tanpa perubahan UI di Fase 0".
     **Sampai butir ini selesai, P0 #2 belum benar-benar tertutup** — relawan
     dengan HP di saku masih bisa melewatkan koneksi yang putus.
-15. Layar koneksi baru (nol ketukan)
-16. Peta jadi rumah + posisi pengguna + marker interaktif
-17. Bottom sheet daftar node
-18. Layar detail node
-19. Chat: preset + status kirim
+15. **[PRASYARAT]** Tulis 4 atom baru + widget test **sebelum layar mana pun
+    dibangun**: `DataRow`, `StatCard`, `NodeRow`, `MeterBar`
+    (docs/sistem-komponen.md). Urutannya komponen → layar, bukan sebaliknya —
+    inilah yang membuat dashboard laptop terasa solid dan prototipe Stitch
+    tidak.
+16. Layar koneksi baru (nol ketukan)
+17. Peta jadi rumah + posisi pengguna + marker interaktif
+18. Bottom sheet daftar node
+19. Layar detail node
+20. Chat: preset + status kirim
 
 ## Fase 3 — Tema
 
-20. Terang · Gelap · Malam-merah · Ikuti sistem (default: **Gelap** —
+21. Terang · Gelap · Malam-merah · Ikuti sistem (default: **Gelap** —
     revisi pasca-audit brand; switch tema wajib mudah dijangkau)
-21. Audit kontras setiap layar di keempat tema
+22. Audit kontras setiap layar di keempat tema
 
 ## Fase 4 — Keandalan lapangan
 
-22. Foreground service
-23. Peta offline (pre-download)
-24. Persistensi misi
-25. Auto-reconnect lanjutan
+23. Foreground service
+24. Peta offline (pre-download)
+25. Persistensi misi
+26. Auto-reconnect lanjutan
 
 ## Fase 5 — Fitur
 
-26. SOS interupsi penuh (+ aturan sekali per korban per episode)
-27. Kompas navigasi
-28. "Saya tangani" (tipe paket baru — butuh perubahan firmware)
-29. Kualitas sinyal & kesehatan mesh
-30. Status baterai node (field `bat` — butuh perubahan firmware)
-31. Mission Timeline
-32. Ekspor PDF/GPX
+27. SOS interupsi penuh (+ aturan sekali per korban per episode)
+28. Kompas navigasi
+29. "Saya tangani" (tipe paket baru — butuh perubahan firmware)
+30. Kualitas sinyal & kesehatan mesh
+31. Status baterai node (field `bat` — butuh perubahan firmware)
+32. Mission Timeline
+33. Ekspor PDF/GPX
 
 ## Fase 6 — Developer Mode
 
-33. Live Log Viewer
-34. Raw Packet Inspector
-35. Mock Data Generator
-36. BLE & Link Diagnostics
+34. Live Log Viewer
+35. Raw Packet Inspector
+36. Mock Data Generator
+37. BLE & Link Diagnostics
 
 ## Fase 7 — Dashboard web
 
-37. **[UTANG DARI 0B]** Pindahkan dua perbaikan 0B ke `dashboard/serial_listener.py`:
+38. **[UTANG DARI 0B]** Pindahkan dua perbaikan 0B ke `dashboard/serial_listener.py`:
     heartbeat boleh membuat node baru (baris 223-233), dan deteksi reboot
     menggantikan `seq <= prev` (baris 248-252). Sampai ini dikerjakan, mobile
     dan dashboard **tidak sepakat** tentang node mana yang ada — HP menampilkan
     GATEWAY, dashboard tidak. Perbedaan itu diharapkan, bukan regresi.
-38. Terapkan token yang sama ke `dashboard/style.css`
-39. Selaraskan komponen dan bahasa
+39. Terapkan token yang sama ke `dashboard/style.css`
+40. Selaraskan komponen dan bahasa
 
 ---
 
