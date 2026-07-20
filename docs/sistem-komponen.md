@@ -95,7 +95,53 @@ bertahan tanpa menambah kosakata.
 | Ikon "@" di header | Aset pin resmi wajib dipakai (identitas-brand.md §2). |
 | Foto laptop sebagai latar peta | Placeholder; nyatanya tile OSM. |
 
-## 6. Dampak ke rencana
+## 6. Peta layar: 21 prototipe → 11 nyata
+
+Prototipe **tidak dibuang** — disesuaikan. Yang gugur hanya yang tidak mungkin
+dibangun.
+
+| Prototipe | Jadi | Catatan |
+|---|---|---|
+| Official Splash | ✅ Splash | wordmark + pin + strip |
+| Onboarding ×3 | ✅ Onboarding ×3 | tak butuh server; radar & ilustrasi dipertahankan |
+| Operator Registration | ❌ | **tidak ada server** — tak ada akun/kata sandi/sesi |
+| Recovery Access | ❌ | idem |
+| Secure Login | ❌ | idem |
+| Verification Success | ❌ | idem |
+| Select Mission Role | ❌ | peran ditentukan **firmware** (ID 0/1xxx/2xxx), bukan pengguna |
+| Mission Preparation | ✅ → Izin & kesiapan | diubah jadi pemeriksaan nyata: izin BLE/lokasi, GPS, baterai HP |
+| Scanning for Gateways | ✅ Koneksi | jadi nol-ketukan; radar sweep dipertahankan |
+| Pairing Device | ✅ Konfirmasi node baru | sekali per node (keputusan D5) |
+| Ready for Mission | ❌ digabung | tersambung → langsung peta |
+| Mission Control Dashboard | ✅ → sheet posisi penuh | **System Health** & **Recent Activity** diambil utuh |
+| Tactical Mission Map | ✅ Peta (rumah) | mengambang 6→2; tombol SOS dibuang |
+| Live Tracking | ❌ digabung | sama dengan peta + sheet |
+| Node Detail | ✅ Detail node | 5 tata letak → satu DataRow |
+| Team & Victim Mgmt | ✅ → sheet + filter peran | segmented jadi filter **SAR/Korban/Gateway** |
+| Communication Center | ✅ Chat | + preset satu ketuk |
+| Emergency Response & SOS | ✅ Interupsi SOS | checklist & timeline diambil |
+| Shader | — | artefak Stitch |
+
+### Konsep "Misi" harus jujur
+
+Prototipe menampilkan `OPERATION NIGHTHAWK`, durasi `04:22:15`, fase
+*Sector Alpha*, progres **65%**, dan **T-minus**. Tidak satu pun bisa dihitung:
+tidak ada server yang mendefinisikan misi, tidak ada target untuk
+dipersentasekan, tidak ada tenggat untuk dihitung mundur.
+
+Yang **bisa** jujur dan karena itu dipakai: waktu sejak tersambung, jumlah node
+per peran, umur paket terakhir, status BLE/LoRa/GPS. Sisanya dibuang — bukan
+karena jelek, tapi karena menampilkannya berarti berbohong (prinsip #1).
+
+### Diambil utuh dari prototipe
+
+- **System Health** (LoRa · GPS · BLE) — data nyata, sangat berharga
+- **Recent Activity** → `TimelineRow`
+- **Filter peran** (TEAMS/VICTIMS/RESOURCES → SAR/Korban/Gateway)
+- **Emergency Checklist** → `ChecklistRow`
+- **Panel LoRa Link** → `DataRow` + `MeterBar`
+
+## 7. Dampak ke rencana
 
 `docs/strategi-ux.md` Fase 2 bertambah satu butir di awal: **tulis 4 atom baru
 + widget test** sebelum layar mana pun dibangun. Urutannya jadi:
