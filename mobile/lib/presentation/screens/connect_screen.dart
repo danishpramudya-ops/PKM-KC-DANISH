@@ -11,6 +11,8 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/theme/app_type.dart';
 import '../../data/repositories/connection_repository.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/failure_card.dart';
+import '../widgets/loading_state.dart';
 import '../widgets/radar_scanner.dart';
 import '../widgets/surface_card.dart';
 import 'home_shell.dart';
@@ -113,18 +115,11 @@ class _ConnectScreenState extends State<ConnectScreen>
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeShell()),
       );
-    } else if (connection.status == ConnectionStatus.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          // failure.message SELALU bahasa manusia (kamus 0A-C2) — tidak ada
-          // e.toString() yang boleh sampai ke layar.
-          content: Text(
-              connection.failure?.message ?? 'Terjadi gangguan koneksi.'),
-          backgroundColor: AppTokens.dark.statusCritical,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
+    // Kegagalan TIDAK lagi lewat snackbar: ia tampil persisten sebagai
+    // FailureCard di badan layar (lihat build()). Snackbar lenyap sendiri
+    // dalam 4 detik — di alat lapangan, kegagalan koneksi harus tetap
+    // terlihat sampai relawan menanganinya (DDD §12, "Gagal dengan terang").
   }
 
   String _getDisplayName(String rawName) {
@@ -195,15 +190,28 @@ class _ConnectScreenState extends State<ConnectScreen>
                         ),
                       ),
                       const SizedBox(height: AppSpace.sm),
-                      if (connection.scanResults.isEmpty)
-                        EmptyState(
-                          icon: isScanning ? Icons.bluetooth_searching : Icons.router,
-                          title: isScanning
-                              ? 'Mencari node POINTRESCUE terdekat...'
-                              : 'Belum ada node ditemukan.',
-                          subtitle: isScanning
-                              ? null
-                              : 'Pastikan perangkat SAR menyala dan berada dalam jangkauan.',
+                      // Tiga keadaan berbeda, tidak boleh tertukar
+                      // (DDD U4-U6): sedang memuat, gagal, atau kosong.
+                      if (isScanning && connection.scanResults.isEmpty)
+                        const LoadingState(
+                          label: 'Mencari node POINTRESCUE terdekat…',
+                          subtitle: 'Pastikan node sudah menyala.',
+                        )
+                      else if (connection.failure != null &&
+                          connection.scanResults.isEmpty)
+                        // Kegagalan tampil PERSISTEN sebagai kartu, bukan
+                        // snackbar yang lenyap sendiri — prinsip "Gagal
+                        // dengan terang": sebab + satu tombol aksi.
+                        FailureCard(
+                          failure: connection.failure!,
+                          onAction: _startScan,
+                        )
+                      else if (connection.scanResults.isEmpty)
+                        const EmptyState(
+                          icon: Icons.router_outlined,
+                          title: 'Belum ada node ditemukan',
+                          subtitle: 'Pastikan perangkat SAR menyala dan '
+                              'berada dalam jangkauan.',
                         )
                       else
                         Column(

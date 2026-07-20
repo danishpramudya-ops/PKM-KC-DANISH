@@ -11,6 +11,7 @@ import 'package:anchorpulse/core/theme/app_tokens.dart';
 import 'package:anchorpulse/data/models/connection_failure.dart';
 import 'package:anchorpulse/presentation/widgets/empty_state.dart';
 import 'package:anchorpulse/presentation/widgets/failure_card.dart';
+import 'package:anchorpulse/presentation/widgets/loading_state.dart';
 import 'package:anchorpulse/presentation/widgets/status_pill.dart';
 import 'package:anchorpulse/presentation/widgets/surface_card.dart';
 
@@ -67,6 +68,50 @@ void main() {
             .pumpWidget(_host(StatusPill(label: kind.name, kind: kind)));
         expect(find.text(kind.name), findsOneWidget);
       }
+    });
+
+    testWidgets('setiap status membawa ikon — bukan warna saja (A5)',
+        (tester) async {
+      // Buta warna merah-hijau (8% pria) tidak boleh kehilangan informasi
+      // status. Siluet ikon harus BERBEDA antar status, bukan cuma warnanya.
+      final icons = <IconData>{};
+      for (final kind in StatusKind.values) {
+        await tester
+            .pumpWidget(_host(StatusPill(label: kind.name, kind: kind)));
+        final icon = tester.widget<Icon>(find.byType(Icon));
+        expect(icon.icon, isNotNull, reason: '$kind tanpa ikon');
+        icons.add(icon.icon!);
+      }
+      expect(icons.length, StatusKind.values.length,
+          reason: 'ada status yang memakai ikon sama — tidak terbedakan');
+    });
+
+    testWidgets('ikon boleh diganti sesuai konteks', (tester) async {
+      await tester.pumpWidget(_host(const StatusPill(
+        label: 'Terhubung',
+        kind: StatusKind.ok,
+        icon: Icons.bluetooth_connected_rounded,
+      )));
+      expect(find.byIcon(Icons.bluetooth_connected_rounded), findsOneWidget);
+    });
+  });
+
+  group('LoadingState', () {
+    testWidgets('spinner SELALU disertai keterangan', (tester) async {
+      await tester.pumpWidget(_host(const LoadingState(
+        label: 'Mencari node…',
+        subtitle: 'Pastikan node sudah menyala.',
+      )));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Mencari node…'), findsOneWidget);
+      expect(find.text('Pastikan node sudah menyala.'), findsOneWidget);
+    });
+
+    testWidgets('label wajib — tidak ada spinner telanjang', (tester) async {
+      // Kontrak API: label bertipe non-null required, jadi mustahil
+      // membuat LoadingState tanpa keterangan. Uji ini mengunci kontrak.
+      await tester.pumpWidget(_host(const LoadingState(label: 'Memuat…')));
+      expect(find.text('Memuat…'), findsOneWidget);
     });
   });
 
