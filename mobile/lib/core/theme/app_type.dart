@@ -51,6 +51,19 @@ class AppType {
     height: 1.3,
   );
 
+  /// Label mikro huruf besar berspasi — SATU-SATUNYA gaya untuk
+  /// SectionHeader, label DetailRow, dan caption StatCard
+  /// (docs/sistem-komponen.md). Tingkat fungsional ke-7 yang ditambahkan
+  /// sistem komponen di luar skala 6 asli; jangan tambah lagi.
+  /// Pemakainya wajib memanggil .toUpperCase() pada teksnya.
+  static const overline = TextStyle(
+    fontFamily: _family,
+    fontSize: 10,
+    fontWeight: FontWeight.w800,
+    height: 1.2,
+    letterSpacing: 1.0,
+  );
+
   /// Angka status: jarak, koordinat, RSSI, hitungan mundur.
   /// JetBrains Mono — mengikuti dashboard (keputusan pasca Brand Identity
   /// Audit), sehingga bentuk angka identik di kedua permukaan. Monospace

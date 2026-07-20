@@ -6,10 +6,11 @@ import '../../core/theme/app_tokens.dart';
 /// gaya kartu liar hari ini (radius 4/8/12/16/20/24, elevation campur,
 /// bayangan hardcoded) yang jadi penyebab terbesar kesan prototipe.
 ///
-/// Kontrak:
+/// Kontrak (direvisi v4 "panel tegas", docs/sistem-komponen.md):
 ///  - radius SELALU AppRadius.card, permukaan SELALU token surfaceRaised
-///  - kedalaman dari perbedaan permukaan, BUKAN bayangan hitam hardcoded
-///    (bayangan hitam tak terlihat di tema gelap)
+///  - border 1px halus (contentMuted 25%) — panel tegas ala dashboard,
+///    bukan kaca; kedalaman dari perbedaan permukaan + border, BUKAN
+///    bayangan hitam hardcoded (tak terlihat di tema gelap)
 ///  - bila interaktif (onTap != null), tinggi minimum AppTouch.minTarget —
 ///    sarung tangan adalah baseline, bukan mode
 ///
@@ -51,6 +52,9 @@ class SurfaceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.surfaceRaised,
         borderRadius: radius,
+        border: Border.all(
+          color: tokens.contentMuted.withValues(alpha: 0.25),
+        ),
       ),
       child: Material(
         color: Colors.transparent,

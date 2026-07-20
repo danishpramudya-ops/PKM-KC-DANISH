@@ -43,10 +43,16 @@ nama atomnya.** Kalau tidak bisa, elemen itu tidak lolos.
 
 | # | Atom | Status | Asal | Kontrak |
 |---|---|---|---|---|
-| 1 | `DataRow` | **baru (Fase 2)** | `detail-item` | Ubin ikon + label kecil huruf besar + nilai **mono**. Semua data numerik di seluruh aplikasi memakai ini. Tanpa pengecualian. |
-| 2 | `StatCard` | **baru (Fase 2)** | `stat-card` | Ikon + angka mono besar + label. Hanya hitungan sekilas. Maks 3 berdampingan. |
-| 3 | `NodeRow` | **baru (Fase 2)** | `device-item` | Ubin peran + nama + meta mono + pill + chevron. Satu-satunya cara menampilkan node dalam daftar. |
-| 4 | `MeterBar` | **baru (Fase 2)** | — | Satu bahasa untuk semua kuantitas (sinyal, baterai, progres). Menggantikan 3 bahasa bar yang berbeda. |
+| 1 | `DataRow` | ✅ ada — kode: **`DetailRow`** | `detail-item` | Ubin ikon + label kecil huruf besar + nilai **mono**. Semua data numerik di seluruh aplikasi memakai ini. Tanpa pengecualian. *(Dinamai `DetailRow` di kode: Material Flutter sudah punya kelas `DataRow`; nama justru mengikuti asal-usulnya.)* |
+| 2 | `StatCard` | ✅ ada | `stat-card` | Ikon + angka mono besar + label. Hanya hitungan sekilas. Maks 3 berdampingan. |
+| 3 | `NodeRow` | ✅ ada | `device-item` | Ubin peran + nama + meta mono + pill + chevron. Satu-satunya cara menampilkan node dalam daftar. |
+| 4 | `MeterBar` | ✅ ada | — | Satu bahasa untuk semua kuantitas (sinyal, baterai, progres). Fraction `null` = track kosong — tidak mengarang isi. |
+
+Catatan implementasi: `SectionHeader` ikut jadi widget; gaya micro-label bersama
+ketiganya masuk sebagai `AppType.overline` (tingkat fungsional ke-7, satu-satunya
+penambahan di luar skala 6 — jangan tambah lagi). `SurfaceCard` direvisi ke
+kontrak "panel tegas": border 1px `contentMuted` 25%, tetap tanpa bayangan.
+Nada warna ubin dipusatkan di `DataTone` (`data_tone.dart`).
 | 5 | `StatusPill` | ✅ ada (F3a) | `connection-status` | 4 pasangan token: ok · kritikal · peringatan · nonaktif. Warna **hanya** menyampaikan status. |
 | 6 | `SurfaceCard` | ✅ ada (F3a) | — | Wadah tunggal. Radius 16, border 1px, tanpa bayangan hitam. |
 | 7 | `EmptyState` | ✅ ada (F3a) | — | Ikon + judul + sub + aksi opsional. Bahasa relawan, bukan bahasa mesin. |
