@@ -14,8 +14,8 @@ import '../../core/theme/app_tokens.dart';
 ///  - bila interaktif (onTap != null), tinggi minimum AppTouch.minTarget —
 ///    sarung tangan adalah baseline, bukan mode
 ///
-/// PremiumCard lama TIDAK dihapus dulu — layar bermigrasi per-alur di
-/// Fase 2 (keputusan D-F3), lalu PremiumCard dipensiunkan.
+/// PremiumCard sudah dipensiunkan (dihapus di Fase 2) — seluruh layar
+/// kini memakai kartu ini.
 class SurfaceCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;

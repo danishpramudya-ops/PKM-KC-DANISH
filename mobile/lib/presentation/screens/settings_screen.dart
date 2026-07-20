@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../data/repositories/connection_repository.dart';
+import '../widgets/data_tone.dart';
+import '../widgets/detail_row.dart';
+import '../widgets/section_header.dart';
+import '../widgets/status_pill.dart';
+import '../widgets/surface_card.dart';
 import 'developer_mode_screen.dart';
 
+/// Pengaturan — seluruhnya dirakit dari DetailRow, persis seperti panel
+/// kanan dashboard laptop (docs/sistem-komponen.md). Layar inilah bukti
+/// paling jelas kenapa "satu baris diulang" terasa solid.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -11,7 +21,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
   PermissionStatus _btStatus = PermissionStatus.denied;
   PermissionStatus _locStatus = PermissionStatus.denied;
 
@@ -30,15 +41,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkPermissions();
-    }
+    if (state == AppLifecycleState.resumed) _checkPermissions();
   }
 
   Future<void> _checkPermissions() async {
     final bt = await Permission.bluetoothConnect.status;
     final loc = await Permission.locationWhenInUse.status;
-    
     if (mounted) {
       setState(() {
         _btStatus = bt;
@@ -50,216 +58,176 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   Future<void> _requestBluetooth() async {
     await Permission.bluetoothConnect.request();
     await Permission.bluetoothScan.request();
-    _checkPermissions();
+    await _checkPermissions();
   }
 
   Future<void> _requestLocation() async {
     await Permission.locationWhenInUse.request();
-    _checkPermissions();
-  }
-
-  Widget _buildPermissionStatus(PermissionStatus status) {
-    String text;
-    Color color;
-    
-    if (status.isGranted) {
-      text = 'Granted';
-      color = AppColors.success;
-    } else if (status.isPermanentlyDenied) {
-      text = 'Permanently Denied';
-      color = AppColors.offline;
-    } else {
-      text = 'Denied';
-      color = AppColors.offline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
+    await _checkPermissions();
   }
 
   @override
   Widget build(BuildContext context) {
+    final connection = context.watch<ConnectionRepository>();
+    final connected = connection.status == ConnectionStatus.connected;
+
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xxl),
       children: [
-        // About Card
-        Card(
-          color: AppColors.card,
-          elevation: 4,
-          shadowColor: Colors.black.withOpacity(0.05),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            child: Column(
-              children: [
-                GestureDetector(
-                  onLongPress: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Developer Mode Activated'),
-                        duration: Duration(seconds: 1),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DeveloperModeScreen()),
-                    );
-                  },
-                  child: Hero(
-                    tag: 'app_logo',
-                    child: Image.asset('assets/logo.png', width: 90, height: 90),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'POINTRESCUE',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Emergency Monitoring System',
-                  style: TextStyle(
-                    color: AppColors.text.withOpacity(0.6),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Version 1.0.0',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 32),
-        
-        // Settings List
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
-          child: Text(
-            'PERMISSIONS',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text.withOpacity(0.4),
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        Card(
-          color: AppColors.card,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: AppColors.text.withOpacity(0.05)),
-          ),
+        const SectionHeader('Tampilan'),
+        SurfaceCard(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           child: Column(
             children: [
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.bluetooth, color: AppColors.primary),
-                ),
-                title: const Text('Bluetooth', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Required for BLE scan', style: TextStyle(fontSize: 12)),
-                trailing: _buildPermissionStatus(_btStatus),
-                onTap: _btStatus.isGranted ? null : _requestBluetooth,
+              // Switch tema sungguhan dibangun di Fase 3 bersama keempat
+              // paletnya. Sampai itu, baris ini menyatakan keadaan apa
+              // adanya — bukan sakelar mati yang berpura-pura hidup
+              // (settings lama: `onChanged: (val) {}`).
+              const DetailRow(
+                icon: Icons.dark_mode_rounded,
+                label: 'Tema',
+                value: 'Gelap',
+                tone: DataTone.accent,
               ),
-              Divider(height: 1, indent: 70, color: AppColors.text.withOpacity(0.05)),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.location_on, color: AppColors.primary),
-                ),
-                title: const Text('Location', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Required on Android < 12', style: TextStyle(fontSize: 12)),
-                trailing: _buildPermissionStatus(_locStatus),
-                onTap: _locStatus.isGranted ? null : _requestLocation,
+              DetailRow(
+                icon: Icons.palette_outlined,
+                label: 'Pilihan tema',
+                value: 'Terang · Malam-merah — Fase 3',
+                dimmed: true,
+                onTap: () => _soon(context),
+              ),
+              const DetailRow(
+                icon: Icons.translate_rounded,
+                label: 'Bahasa',
+                value: 'Indonesia',
               ),
             ],
           ),
         ),
-        
-        const SizedBox(height: 32),
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
-          child: Text(
-            'APPEARANCE',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text.withOpacity(0.4),
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-        Card(
-          color: AppColors.card,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: AppColors.text.withOpacity(0.05)),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+        const SizedBox(height: AppSpace.xl),
+        const SectionHeader('Perangkat'),
+        SurfaceCard(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: Column(
+            children: [
+              DetailRow(
+                icon: Icons.router_rounded,
+                label: 'Node tersambung',
+                value: connected
+                    ? 'SAR-${connection.myNodeId ?? '?'}'
+                    : 'Tidak ada',
+                tone: connected ? DataTone.ok : DataTone.neutral,
+                trailing: StatusPill(
+                  label: connected ? 'Aktif' : 'Putus',
+                  kind: connected ? StatusKind.ok : StatusKind.inactive,
+                ),
               ),
-              child: Icon(Icons.dark_mode, color: AppColors.secondary),
-            ),
-            title: const Text('Dark Theme', style: TextStyle(fontWeight: FontWeight.bold)),
-            trailing: Switch(
-              value: false, // Not implemented yet
-              onChanged: (val) {},
-              activeColor: AppColors.secondary,
-            ),
+              const DetailRow(
+                icon: Icons.lan_rounded,
+                label: 'Jaringan mesh',
+                value: 'PR01',
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpace.xl),
+        const SectionHeader('Izin'),
+        SurfaceCard(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: Column(
+            children: [
+              _permissionRow(
+                icon: Icons.bluetooth_rounded,
+                label: 'Perangkat di sekitar',
+                status: _btStatus,
+                onRequest: _requestBluetooth,
+              ),
+              _permissionRow(
+                icon: Icons.location_on_rounded,
+                label: 'Lokasi',
+                status: _locStatus,
+                onRequest: _requestLocation,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpace.xl),
+        const SectionHeader('Lanjutan'),
+        SurfaceCard(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: Column(
+            children: [
+              DetailRow(
+                icon: Icons.terminal_rounded,
+                label: 'Mode pengembang',
+                value: 'Log & diagnostik',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const DeveloperModeScreen()),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpace.xl),
+        const SectionHeader('Tentang'),
+        SurfaceCard(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          child: Column(
+            children: [
+              DetailRow(
+                icon: Icons.shield_rounded,
+                label: 'POINTRESCUE',
+                value: 'Versi 1.0.0',
+                tone: DataTone.accent,
+              ),
+              const DetailRow(
+                icon: Icons.wifi_tethering_rounded,
+                label: 'Signal Lost',
+                value: 'Lives Found',
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _permissionRow({
+    required IconData icon,
+    required String label,
+    required PermissionStatus status,
+    required Future<void> Function() onRequest,
+  }) {
+    final granted = status.isGranted || status.isLimited;
+    final permanentlyDenied = status.isPermanentlyDenied;
+
+    return DetailRow(
+      icon: icon,
+      label: label,
+      value: granted
+          ? 'Diizinkan'
+          : permanentlyDenied
+              ? 'Ditolak permanen'
+              : 'Belum diizinkan',
+      tone: granted ? DataTone.ok : DataTone.warning,
+      trailing: granted
+          ? const StatusPill(label: 'OK', kind: StatusKind.ok)
+          : const StatusPill(label: 'Perlu izin', kind: StatusKind.warning),
+      onTap: granted
+          ? null
+          : permanentlyDenied
+              ? openAppSettings
+              : onRequest,
+    );
+  }
+
+  void _soon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pilihan tema lengkap dibangun di Fase 3.'),
+      ),
     );
   }
 }

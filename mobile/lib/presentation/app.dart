@@ -64,7 +64,13 @@ class _AnchorpulseAppState extends State<AnchorpulseApp> {
       child: MaterialApp(
         title: 'POINTRESCUE',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
+        // Default GELAP (keputusan pasca Brand Identity Audit — karakter
+        // brand dashboard). Palet terang & malam-merah sudah ada di
+        // AppTokens dan lolos uji kontras; sakelar pemilihnya dibangun
+        // di Fase 3.
+        theme: AppTheme.dark,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
         home: const ConnectScreen(),
       ),
     );

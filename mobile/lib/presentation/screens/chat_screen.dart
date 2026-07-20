@@ -2,14 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/ble_constants.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../core/theme/app_type.dart';
 import '../../core/utils/time_format.dart';
 import '../../core/utils/utf8_limit.dart';
 import '../../data/models/chat_message.dart';
 import '../../data/repositories/chat_repository.dart';
+import '../widgets/empty_state.dart';
 
 /// Chat tim SAR — dikirim lewat BLE ke node SAR, di-broadcast firmware ke
-/// mesh LoRa sebagai paket PKT_CHAT (lihat docs/protokol-paket.md §8).
+/// mesh LoRa sebagai paket PKT_CHAT (docs/protokol-paket.md §8).
+///
+/// Dua aturan yang mengikat layar ini:
+///  1. **Preset satu ketuk** menyelesaikan mayoritas kebutuhan — mengetik
+///     dengan sarung tangan basah hampir mustahil (keputusan ronde 4).
+///  2. **Tidak ada centang/"Terkirim"** di mana pun: protokol tanpa ACK
+///     tidak bisa membuktikannya (batasan B8, docs/fase-0c §1).
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -21,23 +29,24 @@ class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   bool _sending = false;
 
-  Future<void> _send() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty || _sending) return;
+  /// Pesan siap pakai — dipilih untuk kejadian paling sering di lapangan.
+  static const _presets = [
+    'Butuh bantuan medis',
+    'Area aman',
+    'Menuju lokasi',
+    'Kembali ke pos',
+  ];
 
-    final chat = context.read<ChatRepository>();
+  Future<void> _send(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _sending) return;
+
     setState(() => _sending = true);
-    try {
-      await chat.send(text);
-      _controller.clear();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal kirim pesan: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
+    // send() tidak melempar: kegagalan disalurkan lewat status pesan yang
+    // persisten di daftar, bukan snackbar yang lenyap (0C-C3).
+    await context.read<ChatRepository>().send(trimmed);
+    _controller.clear();
+    if (mounted) setState(() => _sending = false);
   }
 
   @override
@@ -46,141 +55,202 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  /// Baris status di bawah pesan (0C-C4) — isi TEKS saja di Text yang sudah
-  /// ada, nol widget baru. `handedToNode` sengaja tanpa embel-embel:
-  /// keadaan normal tetap sunyi, hanya penyimpangan yang bersuara
-  /// (prinsip "Terbaca dalam tiga detik"). DILARANG kata "Terkirim"/
-  /// centang — protokol tanpa ACK tidak bisa membuktikannya (B8).
-  String _statusLine(ChatMessage m) {
-    if (!m.isMine) return formatClock(m.timestamp);
-    switch (m.status) {
-      case ChatMessageStatus.sending:
-        return '${formatClock(m.timestamp)} · mengirim…';
-      case ChatMessageStatus.handedToNode:
-        return formatClock(m.timestamp);
-      case ChatMessageStatus.failed:
-        return '${formatClock(m.timestamp)} · gagal terkirim';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final chat = context.watch<ChatRepository>();
-    final messages = chat.messages;
+    final tokens = AppTokens.of(context);
+    final messages = context.watch<ChatRepository>().messages;
 
     return Column(
       children: [
         Expanded(
           child: messages.isEmpty
-              ? const Center(
-                  child: Text('Belum ada pesan.\nKetik di bawah untuk memulai.',
-                      textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+              ? const EmptyState(
+                  icon: Icons.forum_outlined,
+                  title: 'Belum ada pesan',
+                  subtitle: 'Ketuk pesan cepat di bawah untuk mengirim '
+                      'kabar ke seluruh tim.',
                 )
               : ListView.builder(
                   reverse: true,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.md, vertical: AppSpace.md),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final m = messages[messages.length - 1 - index];
-                    return Align(
-                      alignment: m.isMine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                        decoration: BoxDecoration(
-                          color: m.isMine ? AppColors.primary : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!m.isMine)
-                              Text('${m.role}-${m.originId}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: m.isMine ? Colors.white70 : AppColors.primary,
-                                  )),
-                            Text(m.msg,
-                                style: TextStyle(color: m.isMine ? Colors.white : AppColors.text)),
-                            const SizedBox(height: 4),
-                            Text(
-                              _statusLine(m),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: m.isMine ? Colors.white70 : AppColors.text.withOpacity(0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return _Bubble(message: m);
                   },
                 ),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Tulis pesan...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    // maxLength dipertahankan untuk penghitung "N/100" —
-                    // batas SEBENARNYA adalah byte, ditegakkan formatter di
-                    // bawah (firmware membatasi 100 BYTE; 100 karakter emoji
-                    // = 400 byte akan dipotong firmware dan bisa rusak).
-                    // Penghitung karakter yang menyesatkan utk teks multi-
-                    // byte = kompromi sadar Fase 0, dibereskan di Fase 2.
-                    maxLength: 100,
-                    inputFormatters: const [
-                      Utf8LengthLimitingFormatter(BleConstants.chatMaxBytes),
-                    ],
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _send(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  margin: const EdgeInsets.only(bottom: 24), // to align with the input because of maxLength counter
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    onPressed: _sending ? null : _send,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.send, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        _presetRow(tokens),
+        _inputRow(tokens),
       ],
     );
+  }
+
+  Widget _presetRow(AppTokens tokens) {
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+        itemCount: _presets.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm),
+        itemBuilder: (context, i) => Center(
+          child: OutlinedButton(
+            onPressed: _sending ? null : () => _send(_presets[i]),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: tokens.accent,
+              side: BorderSide(color: tokens.accent, width: 1.5),
+              minimumSize: const Size(0, 40),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+              shape: const StadiumBorder(),
+              textStyle: AppType.label,
+            ),
+            child: Text(_presets[i]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _inputRow(AppTokens tokens) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                minLines: 1,
+                maxLines: 3,
+                style: AppType.body.copyWith(color: tokens.contentPrimary),
+                // Batas SEBENARNYA adalah byte (firmware memotong pada byte
+                // ke-100 dan bisa membelah karakter multi-byte) — 0C-C2.
+                inputFormatters: const [
+                  Utf8LengthLimitingFormatter(BleConstants.chatMaxBytes),
+                ],
+                textInputAction: TextInputAction.send,
+                onSubmitted: _send,
+                decoration: InputDecoration(
+                  hintText: 'Tulis pesan…',
+                  hintStyle: AppType.body.copyWith(color: tokens.contentMuted),
+                  filled: true,
+                  fillColor: tokens.surfaceOverlay,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.lg, vertical: AppSpace.md),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            SizedBox(
+              width: AppTouch.minTarget,
+              height: AppTouch.minTarget,
+              child: Material(
+                color: tokens.accent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _sending ? null : () => _send(_controller.text),
+                  child: Icon(Icons.send_rounded,
+                      color: tokens.onAccent, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Bubble extends StatelessWidget {
+  final ChatMessage message;
+
+  const _Bubble({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = AppTokens.of(context);
+    final mine = message.isMine;
+    final failed = message.status == ChatMessageStatus.failed;
+
+    final bg = !mine
+        ? tokens.surfaceOverlay
+        : failed
+            ? Colors.transparent
+            : tokens.accent;
+    final fg = !mine
+        ? tokens.contentPrimary
+        : failed
+            ? tokens.statusCritical
+            : tokens.onAccent;
+
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: failed
+              ? Border.all(color: tokens.statusCritical, width: 1.5)
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!mine)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  '${message.role}-${message.originId}',
+                  style: AppType.overline.copyWith(color: tokens.accent),
+                ),
+              ),
+            Text(
+              message.msg,
+              style: AppType.body.copyWith(fontSize: 14, color: fg),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              _statusLine(message),
+              style: AppType.data.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: fg.withValues(alpha: failed ? 1 : 0.75),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Keadaan normal tetap sunyi — hanya penyimpangan yang bersuara
+  /// (prinsip "Terbaca dalam tiga detik"). DILARANG kata "Terkirim" atau
+  /// ikon centang: protokol tanpa ACK tidak bisa membuktikannya (B8).
+  String _statusLine(ChatMessage m) {
+    final clock = formatClock(m.timestamp);
+    if (!m.isMine) return clock;
+    return switch (m.status) {
+      ChatMessageStatus.sending => '$clock · mengirim…',
+      ChatMessageStatus.handedToNode => clock,
+      ChatMessageStatus.failed => '$clock · gagal terkirim',
+    };
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
 
 class DeveloperModeScreen extends StatelessWidget {
   const DeveloperModeScreen({super.key});
@@ -35,8 +34,8 @@ class DeveloperModeScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              border: Border.all(color: Colors.orange.withOpacity(0.5)),
+              color: Colors.orange.withValues(alpha: 0.1),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(

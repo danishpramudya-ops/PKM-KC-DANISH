@@ -7,11 +7,18 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/ble_constants.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../core/theme/app_type.dart';
 import '../../data/repositories/connection_repository.dart';
-import '../widgets/premium_card.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/radar_scanner.dart';
+import '../widgets/surface_card.dart';
 import 'home_shell.dart';
 
+/// Layar pindai & sambung ke node SAR — visual radar taktis.
+/// Logika BLE/permission SAMA PERSIS dengan Fase 0, hanya tampilannya yang
+/// dirombak. Sejak Fase 2 tema gelap jadi default aplikasi, jadi layar ini
+/// tidak lagi perlu membungkus dirinya sendiri dengan scope tema.
 class ConnectScreen extends StatefulWidget {
   const ConnectScreen({super.key});
 
@@ -19,20 +26,21 @@ class ConnectScreen extends StatefulWidget {
   State<ConnectScreen> createState() => _ConnectScreenState();
 }
 
-class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProviderStateMixin {
+class _ConnectScreenState extends State<ConnectScreen>
+    with SingleTickerProviderStateMixin {
   bool _requestingPermission = false;
-  late AnimationController _animController;
-  late Animation<double> _scaleAnimation;
+  late final AnimationController _animController;
+  late final Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    
-    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+
+    _pulse = Tween<double>(begin: 0.35, end: 1.0).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
   }
@@ -69,9 +77,9 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
     if (!btOn) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bluetooth belum aktif. Nyalakan Bluetooth lalu coba lagi.'),
-          backgroundColor: AppColors.offline,
+        SnackBar(
+          content: const Text('Bluetooth belum aktif. Nyalakan Bluetooth lalu coba lagi.'),
+          backgroundColor: AppTokens.dark.statusCritical,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -82,11 +90,11 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
     if (!ok) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Izin Bluetooth ditolak. Buka Settings > Apps > POINTRESCUE > '
+        SnackBar(
+          content: const Text('Izin Bluetooth ditolak. Buka Settings > Apps > POINTRESCUE > '
               'Permissions dan izinkan "Perangkat di sekitar".'),
-          duration: Duration(seconds: 5),
-          backgroundColor: AppColors.offline,
+          duration: const Duration(seconds: 5),
+          backgroundColor: AppTokens.dark.statusCritical,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -112,7 +120,7 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
           // e.toString() yang boleh sampai ke layar.
           content: Text(
               connection.failure?.message ?? 'Terjadi gangguan koneksi.'),
-          backgroundColor: AppColors.offline,
+          backgroundColor: AppTokens.dark.statusCritical,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -132,279 +140,235 @@ class _ConnectScreenState extends State<ConnectScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     final connection = context.watch<ConnectionRepository>();
     final isScanning = connection.status == ConnectionStatus.scanning;
+    final isConnecting = connection.status == ConnectionStatus.connecting;
+    final tokens = AppTokens.of(context);
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary.withOpacity(0.05),
-              AppColors.background,
-            ],
-            stops: const [0.0, 0.4],
+    return Builder(
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'POINTRESCUE',
+            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
           ),
         ),
-        child: SafeArea(
+        body: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 50),
-              // Hero Image
-              Center(
-                child: AnimatedBuilder(
-                  animation: _scaleAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: isScanning ? _scaleAnimation.value : 1.0,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            if (isScanning)
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.2),
-                                blurRadius: 30,
-                                spreadRadius: 10,
-                              )
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: AppSpace.xl),
+                      RadarScanner(isScanning: isScanning, pulse: _pulse),
+                      const SizedBox(height: AppSpace.xl),
+                      Text(
+                        isScanning ? 'MEMINDAI' : 'SIAP MEMINDAI',
+                        style: AppType.label.copyWith(
+                          color: isScanning ? tokens.accent : tokens.contentMuted,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.xs),
+                      Text(
+                        isScanning
+                            ? 'MENCARI NODE SAR DI SEKITAR...'
+                            : 'Tekan tombol di bawah untuk mulai mencari node.',
+                        textAlign: TextAlign.center,
+                        style: isScanning
+                            ? AppType.data.copyWith(color: tokens.contentMuted, fontSize: 12)
+                            : TextStyle(color: tokens.contentMuted, fontSize: 13),
+                      ),
+                      const SizedBox(height: AppSpace.xxl),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'NODE TERSEDIA',
+                          style: AppType.label.copyWith(
+                            color: tokens.contentMuted,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      if (connection.scanResults.isEmpty)
+                        EmptyState(
+                          icon: isScanning ? Icons.bluetooth_searching : Icons.router,
+                          title: isScanning
+                              ? 'Mencari node POINTRESCUE terdekat...'
+                              : 'Belum ada node ditemukan.',
+                          subtitle: isScanning
+                              ? null
+                              : 'Pastikan perangkat SAR menyala dan berada dalam jangkauan.',
+                        )
+                      else
+                        Column(
+                          children: [
+                            for (final result in connection.scanResults)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                                child: _ScanResultTile(
+                                  result: result,
+                                  displayName: _getDisplayName(
+                                    result.device.platformName.isNotEmpty
+                                        ? result.device.platformName
+                                        : result.advertisementData.advName,
+                                  ),
+                                  isConnecting: isConnecting,
+                                  onTap: isConnecting ? null : () => _connect(result.device),
+                                ),
+                              ),
                           ],
                         ),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Hero(
-                    tag: 'app_logo',
-                    child: Image.asset(
-                      'assets/logo.png',
-                      width: 140,
-                      height: 140,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Title
-              Text(
-                'POINTRESCUE',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
-                  letterSpacing: 2.0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Emergency Monitoring System',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.text.withOpacity(0.6),
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 40),
-              
-              // Scan Button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Container(
-                  width: double.infinity,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.secondary.withOpacity(0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
+                      const SizedBox(height: AppSpace.lg),
                     ],
                   ),
-                  child: ElevatedButton(
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: AppTouch.minTarget,
+                  child: FilledButton(
                     onPressed: (_requestingPermission || isScanning) ? null : _startScan,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.secondary.withOpacity(0.5),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: tokens.accent,
+                      foregroundColor: tokens.onAccent,
+                      disabledBackgroundColor: tokens.accent.withValues(alpha: 0.4),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppRadius.card),
                       ),
-                      elevation: 0,
                     ),
                     child: isScanning
-                        ? const Row(
+                        ? Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               SizedBox(
-                                width: 24,
-                                height: 24,
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(tokens.onAccent),
                                 ),
                               ),
-                              SizedBox(width: 16),
-                              Text(
+                              const SizedBox(width: AppSpace.md),
+                              const Text(
                                 'Mencari Node...',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                               ),
                             ],
                           )
                         : const Text(
                             'Mulai Pindai',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                           ),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              
-              // Results or Empty State
-              Expanded(
-                child: connection.scanResults.isEmpty
-                    ? Center(
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.05),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    isScanning ? Icons.bluetooth_searching : Icons.bluetooth,
-                                    size: 48,
-                                    color: AppColors.primary.withOpacity(0.5),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  isScanning
-                                      ? 'Mencari node POINTRESCUE terdekat...'
-                                      : 'Belum ada node ditemukan.\nPastikan perangkat menyala.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.text.withOpacity(0.5),
-                                    fontSize: 16,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        itemCount: connection.scanResults.length,
-                        itemBuilder: (context, index) {
-                          final result = connection.scanResults[index];
-                          final rawName = result.device.platformName.isNotEmpty
-                              ? result.device.platformName
-                              : result.advertisementData.advName;
-                          final displayName = _getDisplayName(rawName);
-                          final isConnecting = connection.status == ConnectionStatus.connecting;
-
-                          return PremiumCard(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.all(20),
-                            onTap: isConnecting ? null : () => _connect(result.device),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 56,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Icon(Icons.router, color: AppColors.primary, size: 28),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        displayName,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          color: AppColors.text,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.signal_cellular_alt,
-                                            size: 16,
-                                            color: AppColors.success,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'RSSI ${result.rssi} dBm',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: AppColors.text.withOpacity(0.6),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (isConnecting)
-                                  const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 3),
-                                  )
-                                else
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.success.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      'Connect',
-                                      style: TextStyle(
-                                        color: AppColors.success,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
-              
-              // Footer Info
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.only(bottom: AppSpace.md),
                 child: Text(
                   'Net ID: ${BleConstants.netId}',
-                  style: TextStyle(
-                    fontSize: 12, 
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.text.withOpacity(0.3)
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tokens.contentMuted),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Kualifikasi sinyal untuk sublabel di daftar node — turunan tampilan
+/// dari RSSI mentah, tidak ada data baru yang diminta ke perangkat.
+(Color, String) _signalTier(int rssi, AppTokens tokens) {
+  if (rssi >= -60) return (tokens.statusOk, 'Baik');
+  if (rssi >= -80) return (tokens.statusWarning, 'Sedang');
+  return (tokens.statusCritical, 'Lemah');
+}
+
+class _ScanResultTile extends StatelessWidget {
+  final ScanResult result;
+  final String displayName;
+  final bool isConnecting;
+  final VoidCallback? onTap;
+
+  const _ScanResultTile({
+    required this.result,
+    required this.displayName,
+    required this.isConnecting,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = AppTokens.of(context);
+    final (tierColor, tierLabel) = _signalTier(result.rssi, tokens);
+
+    return SurfaceCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: tokens.surfaceOverlay,
+              borderRadius: BorderRadius.circular(AppRadius.small),
+            ),
+            child: Icon(Icons.router, color: tokens.contentSecondary, size: 22),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  displayName,
+                  style: TextStyle(color: tokens.contentPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: tierColor),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(tierLabel, style: TextStyle(color: tierColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          if (isConnecting)
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: tokens.accent),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('RSSI', style: TextStyle(color: tokens.contentMuted, fontSize: 10)),
+                Text('${result.rssi}', style: AppType.data.copyWith(color: tierColor, fontSize: 12)),
+              ],
+            ),
+        ],
       ),
     );
   }
